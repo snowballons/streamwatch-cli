@@ -4,14 +4,11 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 <!-- Add other badges if you set them up, e.g., build status, Python versions -->
 
+![Stream Manager CLI Logo](assets/images/logoign.png)
+
 A simple, lightweight command-line tool to manage your favorite live streams, check their status efficiently, and launch them directly in your media player **without needing a heavy web browser.**
 
-<!--
-*********************************************************
-*** TODO: Replace the link below with your demo video! ***
-*********************************************************
--->
-**[Link to Demo Video/GIF Will Go Here]**
+!![Stream Manager CLI guide](assets/gifs-videos/stream-manager-cli.webm)
 
 Tired of opening multiple browser tabs just to check if your favorite streamers are live? Stream Manager CLI provides a clean terminal interface to see who's online and play their streams instantly.
 
