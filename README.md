@@ -8,7 +8,7 @@
 
 A simple, lightweight command-line tool to manage your favorite live streams, check their status efficiently, and launch them directly in your media player **without needing a heavy web browser.**
 
-!![Stream Manager CLI guide](assets/gifs-videos/stream-manager-cli.webm)
+![Stream Manager CLI guide](assets/gifs-videos/stream-manager-cli.gif)
 
 Tired of opening multiple browser tabs just to check if your favorite streamers are live? Stream Manager CLI provides a clean terminal interface to see who's online and play their streams instantly.
 
