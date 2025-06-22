@@ -1,4 +1,4 @@
-# Stream Manager CLI
+# StreamWatch CLI
 
 [![PyPI version](https://img.shields.io/pypi/v/stream-manager-cli.svg)](https://pypi.org/project/stream-manager-cli/0.2.0/) <!-- Replace with actual PyPI badge once live -->
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
