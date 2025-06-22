@@ -12,12 +12,12 @@ def read(fname):
         return "" # Return empty string if file doesn't exist
 
 # --- Package Metadata ---
-NAME = 'stream-manager-cli'
+NAME = 'streamwatch'
 VERSION = '0.2.0' # Incremented version as features were added
 AUTHOR = 'Johny Snow'
 EMAIL = 'snowballons@protonmail.com' 
 DESCRIPTION = 'A CLI tool to manage, check status, and play favorite live streams.'
-URL = 'https://github.com/snowballons/stream-manager-cli'
+URL = 'https://github.com/snowballons/streamwatch-cli'
 LICENSE_TYPE = 'MIT License' 
 PYTHON_REQUIRES = '>=3.7' 
 
@@ -55,7 +55,7 @@ setup(
     entry_points={
         'console_scripts': [
             # command_name = package_name.module_name:function_name
-            'stream-manager = stream_manager_cli.main:main',
+            'streamwatch = streamwatch.main:main',
         ],
     },
 

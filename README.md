@@ -4,13 +4,13 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 <!-- Add other badges if you set them up, e.g., build status, Python versions -->
 
-![Stream Manager CLI Logo](assets/images/logoign.png)
+![Streamwatch Logo](assets/images/logoign.png)
 
 A simple, lightweight command-line tool to manage your favorite live streams, check their status efficiently, and launch them directly in your media player **without needing a heavy web browser.**
 
-![Stream Manager CLI guide](assets/gifs-videos/stream-manager-cli.gif)
+![Streamwatch CLI guide](assets/gifs-videos/stream-manager-cli.gif)
 
-Tired of opening multiple browser tabs just to check if your favorite streamers are live? Stream Manager CLI provides a clean terminal interface to see who's online and play their streams instantly.
+Tired of opening multiple browser tabs just to check if your favorite streamers are live? Streamwatch provides a clean terminal interface to see who's online and play their streams instantly.
 
 ## Features
 
@@ -26,7 +26,7 @@ Tired of opening multiple browser tabs just to check if your favorite streamers 
 *   **Configurable Quality:** Set your preferred stream quality (e.g., "best", "720p") for playback.
 *   **Manual Refresh:** Update the live stream list on demand without restarting the tool.
 
-## Why Use Stream Manager CLI?
+## Why Use Streamwatch CLI?
 
 *   **Save System Resources:** The biggest advantage! Checking and watching streams without a browser significantly reduces CPU and RAM usage, especially on less powerful machines.
 *   **Simplicity & Speed:** A single, fast interface to check all your favorites and launch streams instantly.
@@ -35,7 +35,7 @@ Tired of opening multiple browser tabs just to check if your favorite streamers 
 
 ## Prerequisites
 
-Before using Stream Manager CLI, ensure you have the following installed:
+Before using Streamwatch CLI, ensure you have the following installed:
 
 1.  **Python:** Version 3.7 or higher is required. You can check your version with `python --version` or `python3 --version`. Download Python from [python.org](https://www.python.org/) if needed.
 
@@ -49,7 +49,7 @@ Before using Stream Manager CLI, ensure you have the following installed:
 The recommended way to install Stream Manager CLI is using `pip`:
 
 ```bash
-pip install stream-manager-cli
+pip install streamwatch
 ```
 This command will download the tool from the Python Package Index (PyPI) and automatically install its dependency (streamlink).
 <details>
@@ -60,12 +60,12 @@ Follow these steps if you want to run the tool directly from the source code. Th
 Open your terminal or command prompt and navigate to the directory where you want to store the project. Then, run the following command to download the code:
 
 ```bash
-git clone https://github.com/snowballons/stream-manager-cli.git
+git clone https://github.com/snowballons/streamwatch-cli.git
 ```
 Now, change into the newly created project directory:
 
 ```bash
-cd stream-manager-cli
+cd streamwatch-cli
 ```
 
 2. Create and Activate a Virtual Environment (Highly Recommended)
@@ -89,7 +89,7 @@ pip install -r requirements.txt
 Make sure you are inside the root stream-manager-cli directory with the virtual environment activated. Run using:
 
 ```bash
-python -m stream_manager_cli.main
+python -m streamwatch.main
 ```
 </details>
 
@@ -97,7 +97,7 @@ python -m stream_manager_cli.main
 1. Run the tool: Once installed via pip, simply open your terminal and type:
 
 ```bash
-stream-manager
+streamwatch
 ```
 
 2. First Run: The tool will automatically create a configuration directory and an empty stream list file (streams.json). It will prompt you to add your first stream URLs using the [A] option.
@@ -117,10 +117,10 @@ stream-manager
 
 ## Configuration File
 
-Stream Manager CLI stores your list of stream URLs in a streams.json file located in a platform-specific user configuration directory:
+Streamwatch stores your list of stream URLs in a streams.json file located in a platform-specific user configuration directory:
 
-Linux/macOS: Typically ~/.config/stream-manager-cli/streams.json (or $XDG_CONFIG_HOME/stream-manager-cli/streams.json if XDG_CONFIG_HOME is set).
-Windows: Typically %APPDATA%\stream-manager-cli\streams.json (e.g., C:\Users\YourUser\AppData\Roaming\stream-manager-cli\streams.json).
+Linux/macOS: Typically ~/.config/stream-manager-cli/streams.json (or $XDG_CONFIG_HOME/streamwatch-cli/streams.json if XDG_CONFIG_HOME is set).
+Windows: Typically %APPDATA%\streamwatch-cli\streams.json (e.g., C:\Users\YourUser\AppData\Roaming\streamwatch-cli\streams.json).
 
 You generally don't need to edit this file manually, as adding and removing streams is handled through the [A] and [R] menu options.
 Other settings (like stream quality, timeouts) are currently defined within the package's config.py file. Modifying these requires editing the source code if installed manually, or would require forking/reinstalling if installed via pip.
