@@ -5,7 +5,7 @@
     --background-color: #121212; /* Dark background */
     --surface-color: #1e1e1e; /* Slightly lighter for cards/sections */
     --text-color: #e0e0e0;
-    --text-muted-color: #a0a0a0;
+    --text-muted-color: #b0b0b0;
     --heading-font: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
     --body-font: 'Roboto', sans-serif;
     --border-radius: 8px;
@@ -406,4 +406,47 @@ footer a:hover {
     .nav-logo {
         height: 30px;
     }
+}
+
+/* Accessibility: Focus Styles */
+.cta-button:focus, .copy-button:focus, nav ul li a:focus, .menu-toggle:focus {
+    outline: 2px solid var(--primary-color);
+    outline-offset: 2px;
+    box-shadow: 0 0 0 2px var(--secondary-color);
+    background-color: #222 !important;
+}
+
+/* Features List Alignment */
+.features-list {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    padding: 0;
+    margin: 0 auto 2rem auto;
+    max-width: 600px;
+    list-style: none;
+}
+.features-list li {
+    font-size: 1.15rem;
+    color: var(--text-color);
+    background: #232323;
+    border-radius: var(--border-radius);
+    padding: 0.7rem 1.2rem;
+    margin-bottom: 0.5rem;
+    width: 100%;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+    transition: background 0.2s, color 0.2s, box-shadow 0.2s;
+    text-align: left;
+}
+.features-list li:focus, .features-list li:hover {
+    background: var(--primary-color);
+    color: #fff;
+    box-shadow: 0 2px 8px rgba(0,168,255,0.15);
+}
+
+/* Add hover/focus transitions to nav links and buttons */
+nav ul li a, .cta-button, .copy-button, .menu-toggle {
+    transition: background 0.2s, color 0.2s, box-shadow 0.2s;
 }

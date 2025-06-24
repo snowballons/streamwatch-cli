@@ -12,7 +12,7 @@
 **StreamWatch** is a fast, efficient, and distraction-free command-line tool for managing and watching your favorite live streams—no browser required!
 
 <p align="center">
-  <img src="assets/gifs-videos/streamwatch-cli.gif" alt="StreamWatch CLI in action" width="700"/>
+  <img src="assets/Images/streamwatch-cli.gif" alt="StreamWatch CLI in action" width="700"/>
   <br/>
   <em>(Demo: Interactive menu and playback)</em>
 </p>

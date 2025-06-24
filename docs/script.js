@@ -14,6 +14,7 @@ document.addEventListener('DOMContentLoaded', function() {
             // Close mobile menu if open
             if (navUl.classList.contains('active')) {
                 navUl.classList.remove('active');
+                menuToggle.setAttribute('aria-expanded', 'false');
             }
         });
     });
@@ -27,27 +28,49 @@ document.addEventListener('DOMContentLoaded', function() {
     // Mobile menu toggle
     const menuToggle = document.querySelector('.menu-toggle');
     const navUl = document.querySelector('nav ul');
-
+    const nav = document.querySelector('nav');
     if (menuToggle && navUl) {
+        menuToggle.setAttribute('aria-controls', 'main-nav');
+        menuToggle.setAttribute('aria-expanded', 'false');
+        navUl.setAttribute('id', 'main-nav');
+        nav.setAttribute('aria-label', 'Main navigation');
         menuToggle.addEventListener('click', () => {
-            navUl.classList.toggle('active');
+            const expanded = navUl.classList.toggle('active');
+            menuToggle.setAttribute('aria-expanded', expanded ? 'true' : 'false');
+        });
+        // Keyboard accessibility for menu toggle
+        menuToggle.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                menuToggle.click();
+            }
         });
     }
 });
 
+// Add an aria-live region for copy feedback
+if (!document.getElementById('copy-feedback')) {
+    const feedbackDiv = document.createElement('div');
+    feedbackDiv.id = 'copy-feedback';
+    feedbackDiv.setAttribute('aria-live', 'polite');
+    feedbackDiv.style.position = 'absolute';
+    feedbackDiv.style.left = '-9999px';
+    document.body.appendChild(feedbackDiv);
+}
+
 // Copy to clipboard function
-function copyToClipboard(text) {
+function copyToClipboard(text, button) {
     navigator.clipboard.writeText(text).then(function() {
-        console.log('Async: Copying to clipboard was successful!');
-        // Optional: Show a "Copied!" tooltip or message
-        const copyButton = document.querySelector('.copy-button');
-        const originalText = copyButton.textContent;
-        copyButton.textContent = 'Copied!';
-        setTimeout(() => {
-            copyButton.textContent = originalText;
-        }, 1500);
+        // Show feedback for the correct button
+        if (button) {
+            const originalText = button.textContent;
+            button.textContent = 'Copied!';
+            setTimeout(() => {
+                button.textContent = originalText;
+            }, 1500);
+        }
+        document.getElementById('copy-feedback').textContent = 'Copied to clipboard!';
     }, function(err) {
-        console.error('Async: Could not copy text: ', err);
         // Fallback for older browsers (less common now)
         try {
             const textArea = document.createElement("textarea");
@@ -57,14 +80,25 @@ function copyToClipboard(text) {
             textArea.select();
             document.execCommand('copy');
             document.body.removeChild(textArea);
-            const copyButton = document.querySelector('.copy-button');
-            const originalText = copyButton.textContent;
-            copyButton.textContent = 'Copied!';
-            setTimeout(() => {
-                copyButton.textContent = originalText;
-            }, 1500);
+            if (button) {
+                const originalText = button.textContent;
+                button.textContent = 'Copied!';
+                setTimeout(() => {
+                    button.textContent = originalText;
+                }, 1500);
+            }
+            document.getElementById('copy-feedback').textContent = 'Copied to clipboard!';
         } catch (e) {
             alert('Failed to copy. Please copy manually.');
         }
     });
 }
+
+// Attach copyToClipboard to all copy buttons
+window.addEventListener('DOMContentLoaded', function() {
+    document.querySelectorAll('.copy-button').forEach(btn => {
+        btn.addEventListener('click', function() {
+            copyToClipboard(this.previousElementSibling.textContent, this);
+        });
+    });
+});

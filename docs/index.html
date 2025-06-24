@@ -4,6 +4,16 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>StreamWatch - Your CLI Live Stream Companion</title>
+    <meta name="description" content="StreamWatch is a lightweight CLI tool to manage and watch your favorite live streams, check their status, and launch them in your media player.">
+    <!-- Open Graph / Twitter -->
+    <meta property="og:title" content="StreamWatch - Your CLI Live Stream Companion">
+    <meta property="og:description" content="StreamWatch is a lightweight CLI tool to manage and watch your favorite live streams, check their status, and launch them in your media player.">
+    <meta property="og:image" content="assets/logo.png">
+    <meta property="og:type" content="website">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="StreamWatch - Your CLI Live Stream Companion">
+    <meta name="twitter:description" content="StreamWatch is a lightweight CLI tool to manage and watch your favorite live streams, check their status, and launch them in your media player.">
+    <meta name="twitter:image" content="assets/logo.png">
     <link rel="stylesheet" href="style.css">
     <link rel="icon" href="assets/logo.png" type="image/png"> <!-- Favicon -->
 </head>
@@ -15,13 +25,13 @@
                 <span class="nav-title">StreamWatch</span>
             </div>
             <ul>
-                <li><a href="#overview">Overview</a></li>
-                <li><a href="#how-to-use">How to Use</a></li>
-                <li><a href="#features">Features</a></li>
-                <li><a href="#documentation">Documentation</a></li>
-                <li><a href="https://github.com/snowballons/streamwatch-cli" target="_blank" rel="noopener noreferrer" class="nav-github">GitHub</a></li>
+                <li><a href="#overview" tabindex="0">Overview</a></li>
+                <li><a href="#how-to-use" tabindex="0">How to Use</a></li>
+                <li><a href="#features" tabindex="0">Features</a></li>
+                <li><a href="#documentation" tabindex="0">Documentation</a></li>
+                <li><a href="https://github.com/snowballons/streamwatch-cli" target="_blank" rel="noopener noreferrer" class="nav-github" tabindex="0">GitHub</a></li>
             </ul>
-            <button class="menu-toggle" aria-label="Toggle menu">☰</button>
+            <button class="menu-toggle" aria-label="Toggle menu" tabindex="0">☰</button>
         </nav>
     </header>
 
@@ -33,10 +43,10 @@
                 <p class="tagline">Your Lightweight CLI Live Stream Companion</p>
                 <div class="installation-box">
                     <pre><code>pip install streamwatch</code></pre>
-                    <button class="copy-button" onclick="copyToClipboard('pip install streamwatch')">Copy</button>
+                    <button class="copy-button" onclick="copyToClipboard('pip install streamwatch')" tabindex="0">Copy</button>
                 </div>
-                <a href="https://pypi.org/project/streamwatch/" target="_blank" rel="noopener noreferrer" class="cta-button pypi-button">View on PyPI</a>
-                <a href="https://github.com/snowballons/streamwatch-cli" target="_blank" rel="noopener noreferrer" class="cta-button github-button">View on GitHub</a>
+                <a href="https://pypi.org/project/streamwatch/" target="_blank" rel="noopener noreferrer" class="cta-button pypi-button" tabindex="0">View on PyPI</a>
+                <a href="https://github.com/snowballons/streamwatch-cli" target="_blank" rel="noopener noreferrer" class="cta-button github-button" tabindex="0">View on GitHub</a>
             </div>
         </section>
 
@@ -44,17 +54,17 @@
             <h2>Overview</h2>
             <div class="overview-grid">
                 <div class="overview-item">
-                    <img src="assets/icon-lightweight.svg" alt="Lightweight Icon" class="overview-icon"> <!-- Placeholder icon -->
+                    <img src="assets/icon-lightweight.svg" alt="Lightning bolt representing lightweight and fast performance" class="overview-icon">
                     <h3>Lightweight & Fast</h3>
                     <p>Say goodbye to resource-hungry browsers. StreamWatch is kind to your CPU and RAM, providing a snappy experience.</p>
                 </div>
                 <div class="overview-item">
-                     <img src="assets/icon-focus.svg" alt="Focus Icon" class="overview-icon"> <!-- Placeholder icon -->
+                     <img src="assets/icon-focus.svg" alt="Target icon representing focus-friendly interface" class="overview-icon">
                     <h3>Focus-Friendly</h3>
                     <p>No distracting ads or unnecessary web content. Just your streams, clear and direct in your terminal.</p>
                 </div>
                 <div class="overview-item">
-                     <img src="assets/icon-efficient.svg" alt="Efficient Icon" class="overview-icon"> <!-- Placeholder icon -->
+                     <img src="assets/icon-efficient.svg" alt="Clock icon representing efficient workflow" class="overview-icon">
                     <h3>Efficient Workflow</h3>
                     <p>Check all your favorite live streams and launch them instantly from a single, quick command-line interface.</p>
                 </div>
@@ -63,7 +73,7 @@
             <div class="cli-demo-container">
                 <p>See StreamWatch in action:</p>
                 <!-- Replace with your actual GIF -->
-                <img src="assets/gifs-videos/stream-manager-cli.gif" alt="StreamWatch CLI Demo" class="cli-demo-gif">
+                <img src="assets/streamwatch-cli.gif" alt="StreamWatch CLI Demo" class="cli-demo-gif">
             </div>
         </section>
 
@@ -84,9 +94,9 @@
             <p>For detailed commands and options, check out the <a href="#documentation">full documentation</a>.</p>
         </section>
 
-        <section id="features" class="content_section">
+        <section id="features" class="content-section">
             <h2>Key Features</h2>
-            <ul>
+            <ul class="features-list">
                 <li>✨ Enhanced Live Status Display (Username, Platform, Category)</li>
                 <li>⌨️ Interactive Arrow Key & Number Input Navigation</li>
                 <li>🚀 Direct Media Player Playback (via Streamlink)</li>
@@ -107,12 +117,12 @@
                 and contributing, please refer to the official documentation (our README)
                 on GitHub:
             </p>
-            <a href="https://github.com/snowballons/streamwatch-cli/blob/main/README.md" target="_blank" rel="noopener noreferrer" class="cta-button">View Full Documentation on GitHub</a>
+            <a href="https://github.com/snowballons/streamwatch-cli/blob/main/README.md" target="_blank" rel="noopener noreferrer" class="cta-button" tabindex="0">View Full Documentation on GitHub</a>
         </section>
     </main>
 
     <footer>
-        <p>© <span id="currentYear"></span> Your Name/Project Name (e.g., snowballons). Licensed under MIT.</p>
+        <p>© <span id="currentYear"></span> StreamWatch. Licensed under MIT.</p>
         <p>StreamWatch relies on <a href="https://streamlink.github.io/" target="_blank" rel="noopener noreferrer">Streamlink</a>,
            <a href="https://python-prompt-toolkit.readthedocs.io/" target="_blank" rel="noopener noreferrer">Python Prompt Toolkit</a>, and
            <a href="https://rich.readthedocs.io/" target="_blank" rel="noopener noreferrer">Rich</a>.
