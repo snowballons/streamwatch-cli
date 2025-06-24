@@ -14,7 +14,6 @@
 <p align="center">
   <img src="assets/Images/streamwatch-cli.gif" alt="StreamWatch CLI in action" width="700"/>
   <br/>
-  <em>(Demo: Interactive menu and playback)</em>
 </p>
 
 ---
