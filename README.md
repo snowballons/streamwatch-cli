@@ -1,134 +1,240 @@
-# StreamWatch CLI
+# StreamWatch: Your Lightweight CLI Live Stream Companion
 
-[![PyPI version](https://img.shields.io/pypi/v/stream-manager-cli.svg)](https://pypi.org/project/stream-manager-cli/0.2.0/) <!-- Replace with actual PyPI badge once live -->
+[![PyPI version](https://img.shields.io/pypi/v/streamwatch.svg)](https://pypi.org/project/streamwatch/)
+[![Python Versions](https://img.shields.io/pypi/pyversions/streamwatch.svg)](https://pypi.org/project/streamwatch/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-<!-- Add other badges if you set them up, e.g., build status, Python versions -->
+[![GitHub stars](https://img.shields.io/github/stars/snowballons/streamwatch-cli.svg?style=social)](https://github.com/snowballons/streamwatch-cli)
 
-![Streamwatch Logo](assets/images/logoign.png)
+<p align="center">
+  <img src="assets/images/logoign.png" alt="StreamWatch Logo" width="150"/>
+</p>
 
-A simple, lightweight command-line tool to manage your favorite live streams, check their status efficiently, and launch them directly in your media player **without needing a heavy web browser.**
+**StreamWatch** is a fast, efficient, and distraction-free command-line tool for managing and watching your favorite live streams—no browser required!
 
-![Streamwatch CLI guide](assets/gifs-videos/stream-manager-cli.gif)
+<p align="center">
+  <img src="assets/gifs-videos/streamwatch-cli.gif" alt="StreamWatch CLI in action" width="700"/>
+  <br/>
+  <em>(Demo: Interactive menu and playback)</em>
+</p>
 
-Tired of opening multiple browser tabs just to check if your favorite streamers are live? Streamwatch provides a clean terminal interface to see who's online and play their streams instantly.
+---
 
-## Features
+## Table of Contents
 
-*   **Live Status Checks:** Quickly see which of your favorite streams are currently live using concurrent checks for speed.
-*   **Direct Playback:** Launch live streams directly in your media player (via `streamlink`) with your chosen quality.
-*   **Browser-Free:** Saves system resources (CPU, RAM) by avoiding heavy web browsers for checking and viewing streams.
-*   **Interactive Menu:** Simple text-based menu for easy navigation and stream selection.
-*   **Stream Management:**
-    *   Add new stream URLs directly within the tool.
-    *   Add multiple URLs at once (comma-separated).
-    *   Remove unwanted streams easily via a numbered list.
-*   **Persistent Storage:** Your stream list is saved automatically in a user configuration directory.
-*   **Configurable Quality:** Set your preferred stream quality (e.g., "best", "720p") for playback.
-*   **Manual Refresh:** Update the live stream list on demand without restarting the tool.
+- [Why StreamWatch?](#why-streamwatch)
+- [Key Features](#key-features)
+- [Supported Platforms](#supported-platforms)
+- [Prerequisites](#prerequisites)
+- [Installation](#installation)
+- [Getting Started](#getting-started)
+- [Usage Guide](#usage-guide)
+- [Configuration](#configuration)
+- [Logging](#logging)
+- [Contributing](#contributing)
+- [License](#license)
+- [Acknowledgements](#acknowledgements)
 
-## Why Use Streamwatch CLI?
+---
 
-*   **Save System Resources:** The biggest advantage! Checking and watching streams without a browser significantly reduces CPU and RAM usage, especially on less powerful machines.
-*   **Simplicity & Speed:** A single, fast interface to check all your favorites and launch streams instantly.
-*   **Focus:** Avoid the distractions of browser notifications, ads (Twitch ad blocking is attempted via streamlink), and extra tabs.
-*   **Centralized List:** Keep all your favorite stream URLs organized in one place, managed directly through the tool.
+## Why StreamWatch?
+
+- 🚀 **Lightweight & Fast:** No more resource-hungry browsers.
+- 🎯 **Focus-Friendly:** No ads, popups, or web clutter.
+- 💡 **Efficient Workflow:** Check all your favorites and launch streams from a single interface.
+- ⚙️ **Customizable:** Tweak quality, performance, and more.
+- 📺 **Broad Platform Support:** Works with any site supported by Streamlink.
+- 🖥️ **Cross-Platform:** Windows, macOS, and Linux.
+
+---
+
+## Key Features
+
+- **Live Status Display:** See who's live, with username, platform, and category/game.
+- **Interactive Navigation:** Use arrow keys, numbers, or search to select streams.
+- **Direct Playback:** Launches streams in your media player (MPV recommended) via Streamlink.
+- **Playback Controls:** Stop, next/previous, change quality, return to menu, or donate—all from the terminal.
+- **Stream Management:** Add, remove, and list your favorite streams.
+- **Persistent Configuration:** User-editable `streams.json` and `config.ini`.
+- **Automatic Reconnection:** Tries to reconnect if a stream drops.
+- **Quick Access:** Instantly replay the last stream you watched.
+- **Colorful Interface:** Uses `rich` for a beautiful terminal experience.
+- **Detailed Logging:** For troubleshooting and support.
+
+---
+
+## Supported Platforms
+
+StreamWatch uses [Streamlink](https://streamlink.github.io/) under the hood, so it supports any platform Streamlink does. Enhanced display features are available for:
+
+- YouTube, Twitch, Kick, TikTok, BiliBili, Douyin, Huya, Vimeo, Dailymotion, PlutoTV
+- Major European broadcasters (BBC iPlayer, ARD/ZDF Mediathek, RaiPlay, RTVE Play, Atresplayer, Mitele)
+- AbemaTV, Adult Swim, Bloomberg, Bigo Live, and more!
+
+If your platform isn't listed, StreamWatch will still try to display what it can, and playback will work if Streamlink supports the URL.
+
+---
 
 ## Prerequisites
 
-Before using Streamwatch CLI, ensure you have the following installed:
+- **Python 3.7+** ([Download](https://www.python.org/))
+- **Streamlink** (installed automatically with pip)
+- **MPV Media Player** ([Download](https://mpv.io/)) — recommended for best results
 
-1.  **Python:** Version 3.7 or higher is required. You can check your version with `python --version` or `python3 --version`. Download Python from [python.org](https://www.python.org/) if needed.
-
-2.  **Streamlink:** This is the core engine that finds and extracts stream data. Stream Manager CLI uses it to check live status and launch streams. If you install Stream Manager CLI using `pip` (recommended), `streamlink` will be installed automatically as a dependency. Learn more at [streamlink.github.io](https://streamlink.github.io/).
-
-3.  **MPV Media Player:** Streamlink needs a media player to display the video. While it supports others like VLC, **MPV is highly recommended** for the simplest out-of-the-box experience with this tool. Using MPV avoids potential configuration issues where `streamlink` might not find or correctly interact with other players.
-    *   Download MPV from [mpv.io](https://mpv.io/). Ensure the `mpv` command is available in your system's PATH (usually handled by the installer).
+---
 
 ## Installation
 
-The recommended way to install Stream Manager CLI is using `pip`:
+### Using pip (Recommended)
 
 ```bash
 pip install streamwatch
 ```
-This command will download the tool from the Python Package Index (PyPI) and automatically install its dependency (streamlink).
-<details>
-<summary>Alternative: Installation from Source (for development or manual setup)</summary>
-Follow these steps if you want to run the tool directly from the source code. This requires you to have git installed.
-(Make sure you have met all the requirements listed in the Prerequisites section first!)
-1. Clone the Repository
-Open your terminal or command prompt and navigate to the directory where you want to store the project. Then, run the following command to download the code:
+
+This will install StreamWatch and all dependencies, including Streamlink.
+
+### From Source (for Development)
 
 ```bash
 git clone https://github.com/snowballons/streamwatch-cli.git
-```
-Now, change into the newly created project directory:
-
-```bash
 cd streamwatch-cli
-```
-
-2. Create and Activate a Virtual Environment (Highly Recommended)
-Create: python -m venv venv (Use python3 if needed on Linux/macOS)
-Activate:
-* Linux / macOS:
-```bash
-  source venv/bin/activate
-```
-* Windows:
-```bash
-  venv\Scripts\activate
-```
-3. Install Dependencies
-With the virtual environment activated, install the necessary libraries:
-
-```bash
+python -m venv venv
+source venv/bin/activate  # On Windows: venv\Scripts\activate
 pip install -r requirements.txt
 ```
-4. Running the Tool (from Source)
-Make sure you are inside the root stream-manager-cli directory with the virtual environment activated. Run using:
 
-```bash
-python -m streamwatch.main
-```
-</details>
-
-## Usage
-1. Run the tool: Once installed via pip, simply open your terminal and type:
+Run StreamWatch from source:
 
 ```bash
 streamwatch
 ```
 
-2. First Run: The tool will automatically create a configuration directory and an empty stream list file (streams.json). It will prompt you to add your first stream URLs using the [A] option.
-3. Interactive Menu: You will be presented with a menu:
+---
 
- **[number]** (If live streams are available): Enter the number corresponding to a live stream to start playing it immediately using MPV (or your default player configured for streamlink).
- 
-**[L]**: List all the stream URLs currently saved in your configuration.
+## Getting Started
 
-**[A]**: Add one or more new stream URLs. You'll be prompted to enter URLs, separated by commas if adding multiple. The tool checks for basic http:// or https:// format and avoids duplicates.
+### First Run
 
-**[R]**: Remove stream URLs. You'll be shown a numbered list of all your configured streams, and you can enter the numbers (space or comma-separated) of the streams you wish to remove.
+- On first launch, StreamWatch creates a config directory, a default `config.ini`, and an empty `streams.json`.
+- You'll see a welcome message with instructions.
 
-**[F]**: Force a refresh of the live stream status list.
+<p align="center">
+<img src="assets/Images/first-run.png" alt="StreamWatch First Run Experience" width="600"/>
+</p>
 
-**[Q]**: Quit the application.
+### Adding Streams
 
-## Configuration File
+- From the main menu, press **A** (Add).
+- Enter one or more stream URLs (comma-separated for multiple).
+  - Example:  
+    ```
+    https://twitch.tv/streamer1, https://youtube.com/@channel2, https://kick.com/user3
+    ```
+- Your streams are saved to `streams.json`.
 
-Streamwatch stores your list of stream URLs in a streams.json file located in a platform-specific user configuration directory:
+---
 
-Linux/macOS: Typically ~/.config/stream-manager-cli/streams.json (or $XDG_CONFIG_HOME/streamwatch-cli/streams.json if XDG_CONFIG_HOME is set).
-Windows: Typically %APPDATA%\streamwatch-cli\streams.json (e.g., C:\Users\YourUser\AppData\Roaming\streamwatch-cli\streams.json).
+## Usage Guide
 
-You generally don't need to edit this file manually, as adding and removing streams is handled through the [A] and [R] menu options.
-Other settings (like stream quality, timeouts) are currently defined within the package's config.py file. Modifying these requires editing the source code if installed manually, or would require forking/reinstalling if installed via pip.
+### Main Menu Navigation
+
+- **[Enter]**: Select a live stream interactively.
+- **[Number]**: Play a stream by its number.
+- **[L]**: List all configured streams.
+- **[A]**: Add new streams.
+- **[R]**: Remove streams.
+- **[P]**: Play last watched stream (if available).
+- **[F]**: Refresh live stream list.
+- **[Q]**: Quit StreamWatch.
+
+### Playing a Stream
+
+- Select a stream and StreamWatch launches it in your media player via Streamlink.
+
+### Playback Controls
+
+- **[S]**: Stop stream
+- **[N]**: Next live stream
+- **[P]**: Previous live stream
+- **[C]**: Change quality
+- **[M]**: Main menu
+- **[D]**: Donate to developer
+- **[Q]**: Quit StreamWatch
+
+If the stream ends or you close the player, StreamWatch returns you to the menu. If a stream drops, it will try to reconnect for about 30 seconds.
+
+---
+
+## Configuration
+
+StreamWatch uses two main files:
+
+### Stream List (`streams.json`)
+
+- Stores your stream URLs.
+- **Location:**
+  - Linux/macOS: `~/.config/streamwatch/streams.json`
+  - Windows: `%APPDATA%\\StreamWatch\\streams.json`
+- Manage via the [A] (Add) and [R] (Remove) options.
+
+### Settings (`config.ini`)
+
+- Created on first run, editable with any text editor.
+- **Location:** Same as `streams.json`.
+
+Example:
+
+```ini
+[Streamlink]
+quality = best
+timeout_liveness = 10
+timeout_metadata = 15
+max_workers_liveness = 4
+max_workers_metadata = 2
+twitch_disable_ads = true
+
+[Misc]
+donation_link = https://buymeacoffee.com/snowballons
+first_run_completed = true
+last_played_url =
+```
+
+---
+
+## Logging
+
+- Log file for troubleshooting:  
+  - Linux/macOS: `~/.config/streamwatch/logs/streamwatch.log`
+  - Windows: `%APPDATA%\\StreamWatch\\logs\\streamwatch.log`
+- Includes INFO, WARNING, ERROR, and DEBUG messages.
+- Log files are rotated automatically.
+
+---
 
 ## Contributing
-Contributions are welcome! If you find a bug or have an idea for a new feature, please:
-1. Check the existing Issues to see if it has already been reported or discussed.
-2. If not, open a new issue describing the bug or feature request.
-3. If you'd like to contribute code, please fork the repository and submit a pull request.
+
+Contributions, bug reports, and feature requests are welcome!
+
+- **Check Issues:** Search existing issues before submitting.
+- **Open an Issue:** For bugs or ideas, include steps to reproduce, version, OS, and logs if possible.
+- **Pull Requests:** Fork, branch, commit, and submit with a clear description.
+
+---
+
 ## License
-This project is licensed under the MIT License. See the LICENSE file for details.
+
+StreamWatch is open-source software licensed under the MIT License. See the LICENSE file for details.
+
+---
+
+## Acknowledgements
+
+- Built on [Streamlink](https://streamlink.github.io/)
+- UI powered by [Prompt Toolkit](https://python-prompt-toolkit.readthedocs.io/en/master/) and [Rich](https://rich.readthedocs.io/en/stable/)
+
+---
+
+Happy Streaming! 📺
+
+
+
+

@@ -1,6 +1,11 @@
 import json
+import logging # Import logging
 import sys
 from . import config
+from . import ui
+
+# Get a logger for this module
+logger = logging.getLogger(config.APP_NAME + ".storage")
 
 def load_streams():
     """Loads the list of stream URLs from the JSON file."""
@@ -15,18 +20,20 @@ def load_streams():
                 # Basic validation: ensure all items are strings
                 return [item for item in data if isinstance(item, str)]
             else:
-                print(f"Warning: Invalid format in {config.STREAMS_FILE_PATH}. Expected a list.", file=sys.stderr)
+                logger.warning("Invalid format in %s. Expected a list.", config.STREAMS_FILE_PATH)
                 # Attempt recovery or return empty
                 if isinstance(data.get("streams"), list): # Check for a common accidental structure
                      return [item for item in data["streams"] if isinstance(item, str)]
                 return [] # Reset if format is wrong
     except json.JSONDecodeError:
-        print(f"Error: Could not decode JSON from {config.STREAMS_FILE_PATH}.", file=sys.stderr)
-        print("Creating a new empty stream list.", file=sys.stderr)
+        logger.error("Could not decode JSON from %s.", config.STREAMS_FILE_PATH, exc_info=True)
+        ui.console.print(f"Error: Could not decode JSON from {config.STREAMS_FILE_PATH}.", style="error")
+        ui.console.print("Creating a new empty stream list.", style="warning")
         save_streams([]) # Overwrite corrupted file
         return []
     except Exception as e:
-        print(f"Error loading streams from {config.STREAMS_FILE_PATH}: {e}", file=sys.stderr)
+        logger.error("Error loading streams from %s: %s", config.STREAMS_FILE_PATH, e, exc_info=True)
+        ui.console.print(f"Error loading streams from {config.STREAMS_FILE_PATH}: {e}", style="error")
         return []
 
 def save_streams(streams):
@@ -38,7 +45,8 @@ def save_streams(streams):
             json.dump(streams, f, indent=4) # Use indent for readability
         return True
     except Exception as e:
-        print(f"Error saving streams to {config.STREAMS_FILE_PATH}: {e}", file=sys.stderr)
+        logger.error("Error saving streams to %s: %s", config.STREAMS_FILE_PATH, e, exc_info=True)
+        ui.console.print(f"Error saving streams to {config.STREAMS_FILE_PATH}: {e}", style="error")
         return False
 
 def add_streams(new_urls):
@@ -58,7 +66,7 @@ def add_streams(new_urls):
 
         # Basic URL format validation
         if not (url.startswith('http://') or url.startswith('https://')):
-             print(f"Warning: Invalid format skipped: {url} (must start with http:// or https://)")
+             ui.console.print(f"Warning: Invalid format skipped: {url} (must start with http:// or https://)", style="warning")
              invalid_format_count += 1
              continue
 

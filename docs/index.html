@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>StreamWatch - Your CLI Live Stream Companion</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="icon" href="assets/logo.png" type="image/png"> <!-- Favicon -->
+</head>
+<body>
+    <header>
+        <nav>
+            <div class="logo-container">
+                <img src="assets/logo.png" alt="StreamWatch Logo" class="nav-logo">
+                <span class="nav-title">StreamWatch</span>
+            </div>
+            <ul>
+                <li><a href="#overview">Overview</a></li>
+                <li><a href="#how-to-use">How to Use</a></li>
+                <li><a href="#features">Features</a></li>
+                <li><a href="#documentation">Documentation</a></li>
+                <li><a href="https://github.com/snowballons/streamwatch-cli" target="_blank" rel="noopener noreferrer" class="nav-github">GitHub</a></li>
+            </ul>
+            <button class="menu-toggle" aria-label="Toggle menu">☰</button>
+        </nav>
+    </header>
+
+    <main>
+        <section id="hero">
+            <div class="hero-content">
+                <img src="assets/logo.png" alt="StreamWatch Logo" class="hero-logo">
+                <h1>StreamWatch</h1>
+                <p class="tagline">Your Lightweight CLI Live Stream Companion</p>
+                <div class="installation-box">
+                    <pre><code>pip install streamwatch</code></pre>
+                    <button class="copy-button" onclick="copyToClipboard('pip install streamwatch')">Copy</button>
+                </div>
+                <a href="https://pypi.org/project/streamwatch/" target="_blank" rel="noopener noreferrer" class="cta-button pypi-button">View on PyPI</a>
+                <a href="https://github.com/snowballons/streamwatch-cli" target="_blank" rel="noopener noreferrer" class="cta-button github-button">View on GitHub</a>
+            </div>
+        </section>
+
+        <section id="overview" class="content-section">
+            <h2>Overview</h2>
+            <div class="overview-grid">
+                <div class="overview-item">
+                    <img src="assets/icon-lightweight.svg" alt="Lightweight Icon" class="overview-icon"> <!-- Placeholder icon -->
+                    <h3>Lightweight & Fast</h3>
+                    <p>Say goodbye to resource-hungry browsers. StreamWatch is kind to your CPU and RAM, providing a snappy experience.</p>
+                </div>
+                <div class="overview-item">
+                     <img src="assets/icon-focus.svg" alt="Focus Icon" class="overview-icon"> <!-- Placeholder icon -->
+                    <h3>Focus-Friendly</h3>
+                    <p>No distracting ads or unnecessary web content. Just your streams, clear and direct in your terminal.</p>
+                </div>
+                <div class="overview-item">
+                     <img src="assets/icon-efficient.svg" alt="Efficient Icon" class="overview-icon"> <!-- Placeholder icon -->
+                    <h3>Efficient Workflow</h3>
+                    <p>Check all your favorite live streams and launch them instantly from a single, quick command-line interface.</p>
+                </div>
+            </div>
+             <!-- Optional: Add a small GIF/screenshot here -->
+            <div class="cli-demo-container">
+                <p>See StreamWatch in action:</p>
+                <!-- Replace with your actual GIF -->
+                <img src="assets/gifs-videos/stream-manager-cli.gif" alt="StreamWatch CLI Demo" class="cli-demo-gif">
+            </div>
+        </section>
+
+        <section id="how-to-use" class="content-section">
+            <h2>How to Use</h2>
+            <p>Getting started with StreamWatch is simple:</p>
+            <ol>
+                <li><strong>Install StreamWatch:</strong>
+                    <pre><code>pip install streamwatch</code></pre>
+                </li>
+                <li><strong>Prerequisites:</strong> Ensure you have Python (3.7+), Streamlink, and MPV Media Player installed and in your PATH.</li>
+                <li><strong>Run StreamWatch:</strong>
+                    <pre><code>streamwatch</code></pre>
+                </li>
+                <li><strong>Add Streams:</strong> On first run, or using the 'A' option, add your favorite stream URLs.</li>
+                <li><strong>Navigate & Play:</strong> Use the interactive menu (arrow keys or number input) to select and play live streams.</li>
+            </ol>
+            <p>For detailed commands and options, check out the <a href="#documentation">full documentation</a>.</p>
+        </section>
+
+        <section id="features" class="content_section">
+            <h2>Key Features</h2>
+            <ul>
+                <li>✨ Enhanced Live Status Display (Username, Platform, Category)</li>
+                <li>⌨️ Interactive Arrow Key & Number Input Navigation</li>
+                <li>🚀 Direct Media Player Playback (via Streamlink)</li>
+                <li>⚙️ In-Playback Terminal Controls (Stop, Next/Prev, Quality Change, etc.)</li>
+                <li>🔄 Automatic Stream Reconnection Attempts</li>
+                <li>💾 Persistent User Configuration (Stream List & Settings)</li>
+                <li>🎨 Colorful Terminal Interface (powered by Rich)</li>
+                <li>📜 Detailed Logging for Troubleshooting</li>
+                <li>➕ Add/Remove streams easily</li>
+                <li>⏱️ "Play Last" quick access</li>
+            </ul>
+        </section>
+
+        <section id="documentation" class="content-section">
+            <h2>Documentation</h2>
+            <p>
+                For comprehensive information on installation, usage, configuration,
+                and contributing, please refer to the official documentation (our README)
+                on GitHub:
+            </p>
+            <a href="https://github.com/snowballons/streamwatch-cli/blob/main/README.md" target="_blank" rel="noopener noreferrer" class="cta-button">View Full Documentation on GitHub</a>
+        </section>
+    </main>
+
+    <footer>
+        <p>© <span id="currentYear"></span> Your Name/Project Name (e.g., snowballons). Licensed under MIT.</p>
+        <p>StreamWatch relies on <a href="https://streamlink.github.io/" target="_blank" rel="noopener noreferrer">Streamlink</a>,
+           <a href="https://python-prompt-toolkit.readthedocs.io/" target="_blank" rel="noopener noreferrer">Python Prompt Toolkit</a>, and
+           <a href="https://rich.readthedocs.io/" target="_blank" rel="noopener noreferrer">Rich</a>.
+        </p>
+    </footer>
+
+    <script src="script.js"></script>
+</body>
+</html>
