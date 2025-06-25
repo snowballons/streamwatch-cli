@@ -13,7 +13,7 @@ def read(fname):
 
 # --- Package Metadata ---
 NAME = 'streamwatch'
-VERSION = '0.3.0' # Incremented version as features were added
+VERSION = '0.3.1' # Incremented version as features were added
 AUTHOR = 'Johny Snow'
 EMAIL = 'snowballons@protonmail.com' 
 DESCRIPTION = 'A CLI tool to manage, check status, and play favorite live streams.'

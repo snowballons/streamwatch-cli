@@ -3,7 +3,7 @@ streamlink>=6.0.0
 
 # Command-line interface and user interaction
 prompt_toolkit>=3.0.0
-rich >= 13.9.5
+rich>=13.9.5
 # Additional dependencies that may be needed by streamlink
 requests>=2.25.0
 urllib3>=1.26.0
