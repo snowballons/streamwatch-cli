@@ -6,7 +6,7 @@
 [![GitHub stars](https://img.shields.io/github/stars/snowballons/streamwatch-cli.svg?style=social)](https://github.com/snowballons/streamwatch-cli)
 
 <p align="center">
-  <img src="assets/images/logoign.png" alt="StreamWatch Logo" width="150"/>
+  <img src="assets/Images/logoign.png" alt="StreamWatch Logo" width="150"/>
 </p>
 
 **StreamWatch** is a fast, efficient, and distraction-free command-line tool for managing and watching your favorite live streams—no browser required!
