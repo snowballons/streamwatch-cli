@@ -58,9 +58,13 @@ def initial_streamlink_check():
         print(f"CRITICAL ERROR: An unexpected issue occurred while checking for streamlink: {e}", file=sys.stderr)
         return False
 
+def app():
+    """Main entry point for the StreamWatch CLI application (for script entry point)."""
+    main()
+
 def main():
     """Entry point for the StreamWatch CLI application."""
-    setup_logging() # <<<<<<<<<<<<<<<<<<<<<<<< ADD THIS
+    setup_logging() # <<<<<<<<<<<<<<<<<<<<<<<<< ADD THIS
     logger = logging.getLogger(config.APP_NAME) # Get a named logger
     logger.info("StreamWatch application started.")
 

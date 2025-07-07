@@ -100,7 +100,7 @@ def extract_category_keywords(metadata_json, platform, url_type='unknown'):
     # --- Platform Specific Logic ---
     if platform == 'Twitch':
         return meta.get('game') or (title.split(' ')[0] if title else "N/A")
-    
+
     elif platform == 'YouTube':
         clean_title = clean_common_prefixes(title)
         words = clean_title.split()
@@ -132,7 +132,7 @@ def extract_category_keywords(metadata_json, platform, url_type='unknown'):
     elif platform == 'Huya':
         return meta.get('game_name', meta.get('category')) or (title.split(' ')[0] if title else "N/A")
 
-    elif platform in ['BBC iPlayer', 'RaiPlay', 'Atresplayer', 'RTVE Play', 
+    elif platform in ['BBC iPlayer', 'RaiPlay', 'Atresplayer', 'RTVE Play',
                       'ARD Mediathek', 'ZDF Mediathek', 'Mitele', 'AbemaTV']:
         # For broadcasters, the program title is the category
         return meta.get('program_title', meta.get('title')) or "Live Broadcast"
@@ -149,33 +149,36 @@ def extract_category_keywords(metadata_json, platform, url_type='unknown'):
         return " ".join(clean_title.split()[:3]) # First 3 words of cleaned title as a generic category
     return "N/A"
 
-def fetch_live_streams(all_configured_streams):
+def fetch_live_streams(all_configured_streams_data):
     """
     Fetches the list of currently live streams with enhanced metadata.
     Returns a list of dictionaries:
-    [{'url': '...', 'username': '...', 'platform': '...', 'category_keywords': '...', 'is_live': True}, ...]
+    [{'url': '...', 'alias': '...', 'username': '...', 'platform': '...', 'category_keywords': '...', 'is_live': True}, ...]
     """
-    if not all_configured_streams:
+    if not all_configured_streams_data:
         logger.info("No configured streams to check.")
         return []
+
+    all_configured_urls = [s['url'] for s in all_configured_streams_data]
+    url_to_alias_map = {s['url']: s.get('alias', '') for s in all_configured_streams_data}
 
     logger.info("Checking stream liveness, please wait...")
     live_stream_candidates = [] # URLs that are live
 
     # Phase 1: Quick Liveness Check
     with ThreadPoolExecutor(max_workers=config.get_max_workers_liveness()) as executor:
-        future_to_url = {executor.submit(is_stream_live_for_check, url): url for url in all_configured_streams}
+        future_to_url = {executor.submit(is_stream_live_for_check, url): url for url in all_configured_urls}
         for future in as_completed(future_to_url):
             is_live, url = future.result() # is_stream_live_for_check must return (bool, url)
             if is_live:
                 live_stream_candidates.append(url)
-    
+
     if not live_stream_candidates:
         logger.info("No streams appear to be live based on initial check.")
         return []
 
     logger.info(f"Found {len(live_stream_candidates)} potentially live stream(s). Fetching details...")
-    
+
     # Phase 2: Fetch detailed metadata for live candidates
     detailed_live_streams = []
     with ThreadPoolExecutor(max_workers=config.get_max_workers_metadata()) as executor:
@@ -195,47 +198,62 @@ def fetch_live_streams(all_configured_streams):
             url, initial_platform, initial_username, url_type = \
                 task_info['url'], task_info['initial_platform'], \
                 task_info['initial_username'], task_info['url_type']
-            
+
             final_username = initial_username
             final_platform = initial_platform # Usually doesn't change from initial parse
             category = "N/A (no details)"
 
             try:
                 metadata_json = future.result()
+
+                # --- NEW: Viewer Count Extraction ---
+                viewer_count = None # Default to None
                 if metadata_json and 'metadata' in metadata_json:
                     meta = metadata_json['metadata']
-                    
+                    # Check for common key names for viewer count
+                    if 'viewers' in meta:
+                        viewer_count = meta['viewers']
+                    elif 'viewer_count' in meta:
+                        viewer_count = meta['viewer_count']
+                    # Add other platform-specific keys if discovered, e.g., meta.get('online')
+                # --- END NEW ---
+
+                if metadata_json and 'metadata' in metadata_json:
+                    meta = metadata_json['metadata']
                     # Refine username based on platform-specific metadata fields
-                    # This uses the detailed info you provided.
                     author_field = None
-                    if final_platform == 'Twitch': author_field = meta.get('user_name') # More accurate than login sometimes
+                    if final_platform == 'Twitch': author_field = meta.get('user_name')
                     elif final_platform == 'YouTube': author_field = meta.get('author', meta.get('channel', meta.get('uploader')))
-                    elif final_platform == 'Kick': author_field = meta.get('user', {}).get('username') # Example, check Kick JSON
+                    elif final_platform == 'Kick': author_field = meta.get('user', {}).get('username')
                     elif final_platform in ['TikTok', 'Douyin', 'BiliBili', 'Huya', 'Bigo Live']: author_field = meta.get('author', meta.get('nick'))
                     elif final_platform in ['Vimeo', 'Dailymotion']: author_field = meta.get('uploader', meta.get('channel', meta.get('author')))
-                    # For broadcasters, initial_username (channel_id/slug) is often refined by a 'channel_title' or similar
                     elif final_platform == 'PlutoTV': author_field = meta.get('channel_name', meta.get('station_id'))
                     elif final_platform == 'BBC iPlayer': author_field = meta.get('channel_title', meta.get('service_name'))
                     elif final_platform == 'RaiPlay': author_field = meta.get('channel', meta.get('name'))
                     elif final_platform == 'Atresplayer': author_field = meta.get('channel_name')
-                    elif final_platform == 'RTVE Play': author_field = meta.get('channel', meta.get('id')) # or title if it's the channel itself
+                    elif final_platform == 'RTVE Play': author_field = meta.get('channel', meta.get('id'))
                     elif final_platform == 'ARD Mediathek': author_field = meta.get('channelTitle', meta.get('station'))
                     elif final_platform == 'ZDF Mediathek': author_field = meta.get('channel', meta.get('stationName'))
                     elif final_platform == 'Mitele': author_field = meta.get('channel_name')
                     elif final_platform == 'AbemaTV': author_field = meta.get('channelName')
-                    elif final_platform == 'Adult Swim': author_field = meta.get('title') # Title often is the "channel"
-                    elif final_platform == 'Bloomberg': author_field = meta.get('title') # Title often is the "feed"
+                    elif final_platform == 'Adult Swim': author_field = meta.get('title')
+                    elif final_platform == 'Bloomberg': author_field = meta.get('title')
 
                     if author_field:
                         final_username = author_field
-                    
+
                     category = extract_category_keywords(metadata_json, final_platform, url_type)
                 else:
                     category = "N/A (details unavailable)"
-                
+
                 detailed_live_streams.append({
-                    'url': url, 'username': final_username, 'platform': final_platform,
-                    'category_keywords': category, 'is_live': True
+                    'url': url,
+                    'alias': url_to_alias_map.get(url),
+                    'username': final_username,
+                    'platform': final_platform,
+                    'category_keywords': category,
+                    'viewer_count': viewer_count, # <<<< ADD THIS NEW KEY
+                    'is_live': True
                 })
             except FileNotFoundError as e:
                  logger.critical(f"streamlink command not found during metadata fetch for {url}")
@@ -244,18 +262,20 @@ def fetch_live_streams(all_configured_streams):
                 logger.exception(f"Error fetching metadata for {url}")
                 # Fallback: add with basic info if metadata fetch failed but was initially live
                 detailed_live_streams.append({
-                    'url': url, 'username': initial_username, 'platform': initial_platform,
-                    'category_keywords': f"N/A (err: {str(e)[:20]})", 'is_live': True
+                    'url': url,
+                    'alias': url_to_alias_map.get(url),
+                    'username': initial_username,
+                    'platform': initial_platform,
+                    'category_keywords': f"N/A (err: {str(e)[:20]})",
+                    'viewer_count': None, # <<<< ADD THIS NEW KEY
+                    'is_live': True
                 })
-    
+
     # Sort the detailed_live_streams list to match the order of live_stream_candidates
-    # if original order from all_configured_streams is important for display.
-    # For now, the order from as_completed will be used.
-    # To maintain original order:
     ordered_final_streams = []
-    url_to_details_map = {s['url']: s for s in detailed_live_streams} # Build map once
-    for original_url in all_configured_streams:
-        if original_url in url_to_details_map:
-            ordered_final_streams.append(url_to_details_map[original_url])
-            
+    url_to_details_map = {s['url']: s for s in detailed_live_streams}
+    for url in all_configured_urls:
+        if url in url_to_details_map:
+            ordered_final_streams.append(url_to_details_map[url])
+
     return ordered_final_streams

@@ -16,69 +16,137 @@ def run_playback_session(initial_stream_info, initial_quality, all_live_streams_
     current_stream_info = initial_stream_info
     current_quality = initial_quality
     player_process = None
+    user_intent_direction = 0  # 0: none, 1: next, -1: previous
+
     try:
         current_playing_index = [idx for idx, s_info in enumerate(all_live_streams_list) if s_info['url'] == current_stream_info['url']][0]
     except IndexError:
         logger.error("Could not find current stream in live list. Aborting playback session.")
         ui.console.print("[error]Could not find current stream in live list. Aborting playback session.[/error]")
         return "return_to_main"
+
     while True:
-        if player_process and player_process.poll() is not None:
-            logger.info("Player has exited.")
-            ui.console.print("\nPlayer has exited.", style="info")
-            player.terminate_player_process(player_process)
-            player_process = None
-            return "return_to_main"
         if not player_process:
+            logger.info(f"Attempting to launch stream: {current_stream_info['url']}")
+
+            # --- PRE-PLAYBACK HOOK ---
+            player.execute_hook('pre', current_stream_info, current_quality)
+
             player_process = player.launch_player_process(current_stream_info['url'], current_quality)
-            if not player_process:
-                logger.error("Failed to start player. Returning to main menu.")
-                ui.show_message("Failed to start player. Returning to main menu.", style="error", duration=2, pause_after=True)
-                return "return_to_main"
-            else:
-                # Successfully launched, save this as last played
+
+            if player_process:
+                # --- Successful Launch ---
+                user_intent_direction = 0  # Reset intent after a successful launch
                 config.set_last_played_url(current_stream_info['url'])
-                logger.info(f"Set last played URL to: {current_stream_info['url']}")
-        has_next = (current_playing_index + 1) < len(all_live_streams_list)
-        has_previous = current_playing_index > 0
-        action = ui.show_playback_menu(current_stream_info['url'], current_quality, has_next, has_previous)
-        if action == "s" or action == "stop":
+                logger.info(f"Successfully launched. Last played URL set to: {current_stream_info['url']}")
+            else:
+                # --- POST-PLAYBACK HOOK ON LAUNCH FAILURE ---
+                # A launch failure is an "end" to the playback attempt.
+                player.execute_hook('post', current_stream_info, current_quality)
+                # --- Launch Failed ---
+                logger.warning(f"Failed to launch player for {current_stream_info['url']}.")
+
+                # If this was the very first stream the user tried to play, and it failed, then exit.
+                if user_intent_direction == 0:
+                    ui.show_message("Failed to start player for the selected stream. Returning to main menu.", style="error", duration=2, pause_after=True)
+                    return "return_to_main"
+
+                # Otherwise, we were trying to auto-skip, so continue that process.
+                ui.console.print(f"Skipping unavailable stream: [info]{current_stream_info['username']}[/info]", style="dimmed")
+
+                # This loop will continue until it finds a playable stream or exhausts the list
+                found_playable = False
+                for _ in range(len(all_live_streams_list)): # Loop at most the number of streams to prevent infinite loops
+                    if user_intent_direction == 1: # Trying to find next
+                        current_playing_index = (current_playing_index + 1) % len(all_live_streams_list)
+                    elif user_intent_direction == -1: # Trying to find previous
+                        current_playing_index = (current_playing_index - 1 + len(all_live_streams_list)) % len(all_live_streams_list)
+
+                    current_stream_info = all_live_streams_list[current_playing_index]
+                    ui.console.print(f"Trying next: [info]{current_stream_info['username']}[/info]", style="dimmed")
+
+                    # Attempt to launch the new candidate
+                    player_process = player.launch_player_process(current_stream_info['url'], current_quality)
+                    if player_process:
+                        found_playable = True
+                        break # Exit the inner for-loop, continue with the outer while-loop
+
+                if not found_playable:
+                    ui.show_message("Could not find any playable streams in the current direction.", style="error", duration=2, pause_after=True)
+                    return "return_to_main"
+
+                # If we found a playable stream, the outer while-loop will now continue with a valid player_process
+                continue
+
+        # --- Check Player Status (if it's running) ---
+        if player_process and player_process.poll() is not None:
+            # ... (rest of the function is the same, no changes needed here)
+            # ... (code for showing menu and handling actions 's', 'm', 'c', 'd', 'q')
+            logger.info("Player process has exited.")
+            ui.console.print("\nPlayer has exited.", style="info")
+            player.terminate_player_process(player_process) # Ensure it's cleaned up
+            player_process = None
+
+            # --- POST-PLAYBACK HOOK ON NORMAL EXIT ---
+            player.execute_hook('post', current_stream_info, current_quality)
+
+            return "stop_playback"
+
+        # --- Show Menu and Get User Action ---
+        # The logic for has_next_option and has_previous_option is now simplified
+        # because the list is circular. There is always a next/previous if list has > 1 item.
+        is_navigation_possible = len(all_live_streams_list) > 1
+        action = ui.show_playback_menu(current_stream_info['url'], current_quality, is_navigation_possible, is_navigation_possible)
+
+        # --- Handle User Action ---
+        if action == "n" or action == "next":
+            if is_navigation_possible:
+                logger.info("User requested next stream.")
+                player.terminate_player_process(player_process)
+                player.execute_hook('post', current_stream_info, current_quality) # Hook for the stream that is ending
+                player_process = None
+                user_intent_direction = 1
+                # Use modulo arithmetic for circular list
+                current_playing_index = (current_playing_index + 1) % len(all_live_streams_list)
+                current_stream_info = all_live_streams_list[current_playing_index]
+                current_quality = config.get_streamlink_quality()
+            else:
+                ui.console.print("No next stream available.", style="warning")
+                time.sleep(1)
+
+        elif action == "p" or action == "previous":
+            if is_navigation_possible:
+                logger.info("User requested previous stream.")
+                player.terminate_player_process(player_process)
+                player.execute_hook('post', current_stream_info, current_quality) # Hook for the stream that is ending
+                player_process = None
+                user_intent_direction = -1
+                # Modulo arithmetic for circular list (works for negative numbers in Python)
+                current_playing_index = (current_playing_index - 1 + len(all_live_streams_list)) % len(all_live_streams_list)
+                current_stream_info = all_live_streams_list[current_playing_index]
+                current_quality = config.get_streamlink_quality()
+            else:
+                ui.console.print("No previous stream available.", style="warning")
+                time.sleep(1)
+
+        # ... (rest of action handling: s, m, c, d, q) ...
+        elif action == "s" or action == "stop":
             logger.info("User stopped playback.")
             player.terminate_player_process(player_process)
-            return "return_to_main"
+            player.execute_hook('post', current_stream_info, current_quality) # Hook
+            return "stop_playback"
         elif action == "m" or action == "main_menu":
             logger.info("User returned to main menu from playback.")
             ui.console.print("Stopping stream and returning to main menu...", style="info")
             player.terminate_player_process(player_process)
+            player.execute_hook('post', current_stream_info, current_quality) # Hook
             return "return_to_main"
-        elif action == "n" or action == "next":
-            if has_next:
-                logger.info("User switched to next stream.")
-                player.terminate_player_process(player_process)
-                player_process = None
-                current_playing_index += 1
-                current_stream_info = all_live_streams_list[current_playing_index]
-                current_quality = config.get_streamlink_quality()
-            else:
-                logger.warning("No next stream available.")
-                ui.console.print("No next stream available.", style="warning")
-                time.sleep(1)
-        elif action == "p" or action == "previous":
-            if has_previous:
-                logger.info("User switched to previous stream.")
-                player.terminate_player_process(player_process)
-                player_process = None
-                current_playing_index -= 1
-                current_stream_info = all_live_streams_list[current_playing_index]
-                current_quality = config.get_streamlink_quality()
-            else:
-                logger.warning("No previous stream available.")
-                ui.console.print("No previous stream available.", style="warning")
-                time.sleep(1)
         elif action == "c" or action == "change_quality":
             logger.info("User requested to change stream quality.")
             player.terminate_player_process(player_process)
+            player.execute_hook('post', current_stream_info, current_quality) # Hook for the stream that is ending
             player_process = None
+            user_intent_direction = 0
             available_qualities = player.fetch_available_qualities(current_stream_info['url'])
             if available_qualities:
                 new_quality = ui.select_quality_dialog(available_qualities, current_quality)
@@ -103,15 +171,11 @@ def run_playback_session(initial_stream_info, initial_quality, all_live_streams_
         elif action == "q" or action == "quit":
             logger.info("User quit application from playback session.")
             player.terminate_player_process(player_process)
+            player.execute_hook('post', current_stream_info, current_quality) # Hook before quitting
             return "quit_application"
         else:
-            if player_process and player_process.poll() is None:
-                time.sleep(0.1)
-                continue
-            else:
-                logger.info("Player seems to have exited unexpectedly.")
-                ui.console.print("\nPlayer seems to have exited.", style="info")
-                return "return_to_main"
+            time.sleep(0.1)
+            continue
 
 def run_interactive_loop():
     logger.info("Starting interactive loop.")
@@ -127,7 +191,7 @@ def run_interactive_loop():
         ui.show_message("", duration=0, pause_after=True) # Pause for user to read
         config.mark_first_run_completed()
         logger.info("First run experience completed and marked.")
-        needs_refresh = True 
+        needs_refresh = True
     else:
         needs_refresh = True # Default to refresh on normal startup
 
@@ -207,11 +271,13 @@ def run_interactive_loop():
                     sys.exit(0)
                 elif playback_action == "return_to_main":
                     needs_refresh = True
+                elif playback_action == "stop_playback":
+                    needs_refresh = False
                 last_message = ""
             else:
                 logger.info("Play operation cancelled or no stream selected.")
                 last_message = "Play operation cancelled or no stream selected."
-        
+
         elif choice.isdigit(): # If they still type a number at main menu
             if not live_streams:
                 logger.warning("No live streams available to play.")
@@ -230,6 +296,8 @@ def run_interactive_loop():
                         sys.exit(0)
                     elif playback_action == "return_to_main":
                         needs_refresh = True
+                    elif playback_action == "stop_playback":
+                        needs_refresh = False
                     last_message = ""
                 else:
                     logger.warning("Invalid live stream number selected.")
@@ -277,6 +345,28 @@ def run_interactive_loop():
                     logger.info("No valid streams selected for removal.")
                     last_message = "No valid streams selected for removal."
 
+        elif choice == 'i': # IMPORT
+            logger.info("User chose to import streams.")
+            filepath = ui.prompt_for_filepath("Enter path of .txt file to import from: ")
+            if filepath:
+                success, message = storage.import_streams_from_txt(filepath)
+                last_message = message
+                if success:
+                    needs_refresh = True # Refresh the list after a successful import
+            else:
+                last_message = "Import cancelled."
+
+        elif choice == 'e': # EXPORT
+            logger.info("User chose to export streams.")
+            import time
+            default_export_path = f"~/streamwatch_export_{time.strftime('%Y-%m-%d')}.json"
+            filepath = ui.prompt_for_filepath("Enter path to save export file: ", default_filename=default_export_path)
+            if filepath:
+                success, message = storage.export_streams_to_json(filepath)
+                last_message = message # Display success or failure message
+            else:
+                last_message = "Export cancelled."
+
         elif choice == 'f':
             logger.info("User refreshed live stream list.")
             needs_refresh = True
@@ -313,7 +403,7 @@ def run_interactive_loop():
                     logger.info(last_message)
             if selected_stream_info_for_last_played:
                 playback_action = run_playback_session(
-                    selected_stream_info_for_last_played, 
+                    selected_stream_info_for_last_played,
                     config.get_streamlink_quality(), # Use configured quality
                     live_streams # Pass current full live list for next/prev context
                 )
@@ -321,5 +411,8 @@ def run_interactive_loop():
                     ui.clear_screen()
                     ui.console.print("Exiting StreamWatch. Goodbye!", style="success")
                     sys.exit(0)
-                needs_refresh = True # Refresh after playback
+                elif playback_action == "return_to_main":
+                    needs_refresh = True
+                elif playback_action == "stop_playback":
+                    needs_refresh = False
             # If not selected_stream_info_for_last_played, last_message was already set

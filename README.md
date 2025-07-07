@@ -9,231 +9,246 @@
   <img src="assets/Images/logoign.png" alt="StreamWatch Logo" width="150"/>
 </p>
 
-**StreamWatch** is a fast, efficient, and distraction-free command-line tool for managing and watching your favorite live streams—no browser required!
+**StreamWatch** is a modern, fast, and powerful command-line tool for managing and watching your favorite live streams—all without the resource drain of a web browser. It provides a rich terminal interface to see who's online, what they're streaming, and lets you jump right into the action.
 
 <p align="center">
   <img src="assets/Images/streamwatch-cli.gif" alt="StreamWatch CLI in action" width="700"/>
   <br/>
+  <em>(Demo showcasing StreamWatch's interactive menu and playback)</em>
 </p>
 
 ---
 
 ## Table of Contents
 
-- [Why StreamWatch?](#why-streamwatch)
-- [Key Features](#key-features)
-- [Supported Platforms](#supported-platforms)
-- [Prerequisites](#prerequisites)
-- [Installation](#installation)
-- [Getting Started](#getting-started)
-- [Usage Guide](#usage-guide)
-- [Configuration](#configuration)
-- [Logging](#logging)
-- [Contributing](#contributing)
-- [License](#license)
-- [Acknowledgements](#acknowledgements)
+*   [Why Use StreamWatch?](#why-use-streamwatch)
+*   [Key Features](#key-features)
+*   [Supported Platforms](#supported-platforms)
+*   [Prerequisites](#prerequisites)
+*   [Installation](#installation)
+*   [Getting Started](#getting-started)
+*   [Usage](#usage)
+    *   [Main Menu](#main-menu)
+    *   [Playback Controls](#playback-controls)
+*   [Advanced Configuration](#advanced-configuration)
+    *   [Stream Aliases](#stream-aliases)
+    *   [Using a `streams.d` Directory](#using-a-streamsd-directory)
+    *   [Importing & Exporting](#importing--exporting)
+    *   [Playback Hooks](#playback-hooks)
+*   [Configuration File](#configuration-file)
+*   [Troubleshooting](#troubleshooting)
+*   [Contributing](#contributing)
+*   [License](#license)
+*   [Acknowledgements](#acknowledgements)
 
 ---
 
-## Why StreamWatch?
+## Why Use StreamWatch?
 
-- 🚀 **Lightweight & Fast:** No more resource-hungry browsers.
-- 🎯 **Focus-Friendly:** No ads, popups, or web clutter.
-- 💡 **Efficient Workflow:** Check all your favorites and launch streams from a single interface.
-- ⚙️ **Customizable:** Tweak quality, performance, and more.
-- 📺 **Broad Platform Support:** Works with any site supported by Streamlink.
-- 🖥️ **Cross-Platform:** Windows, macOS, and Linux.
+*   **Lightweight & Fast:** Consumes a fraction of the CPU and RAM compared to a browser.
+*   **Focus-Friendly:** A clean, distraction-free interface.
+*   **Efficient Workflow:** Manage and launch streams from a single, keyboard-driven interface.
+*   **Highly Customizable:** Tailor StreamWatch to your needs with custom settings and automation hooks.
+*   **Broad Platform Support:** Works with hundreds of sites out of the box, powered by Streamlink.
+*   **Cross-Platform:** A consistent experience on Windows, macOS, and Linux.
 
 ---
 
 ## Key Features
 
-- **Live Status Display:** See who's live, with username, platform, and category/game.
-- **Interactive Navigation:** Use arrow keys, numbers, or search to select streams.
-- **Direct Playback:** Launches streams in your media player (MPV recommended) via Streamlink.
-- **Playback Controls:** Stop, next/previous, change quality, return to menu, or donate—all from the terminal.
-- **Stream Management:** Add, remove, and list your favorite streams.
-- **Persistent Configuration:** User-editable `streams.json` and `config.ini`.
-- **Automatic Reconnection:** Tries to reconnect if a stream drops.
+- **Live Status Display:** See who's live with their Alias/Username, Platform, Category, and Viewer Count.
+- **Interactive Navigation:** Use arrow keys, number input, or first-letter search to quickly select streams.
+- **Playback Controls:** Stop, play next/previous, change quality, and more, all from the terminal.
+- **Stream Aliases:** Assign custom nicknames to your streams for a personalized list.
+- **Stream Management:** Add, remove, list, import, and export your stream list with ease.
+- **File-Based Management:** Use a `streams.d` directory to manage your streams with simple text files.
+- **Automatic Reconnection:** Automatically attempts to reconnect if a stream drops.
+- **Playback Hooks:** Trigger custom scripts before and after a stream plays.
+- **Persistent Configuration:** User-editable `config.ini` for settings and `streams.json` for your interactive list.
 - **Quick Access:** Instantly replay the last stream you watched.
-- **Colorful Interface:** Uses `rich` for a beautiful terminal experience.
-- **Detailed Logging:** For troubleshooting and support.
+- **Polished UI:** A colorful and modern terminal interface.
+- **Detailed Logging:** Comprehensive log files for easy troubleshooting.
 
 ---
 
 ## Supported Platforms
 
-StreamWatch uses [Streamlink](https://streamlink.github.io/) under the hood, so it supports any platform Streamlink does. Enhanced display features are available for:
+StreamWatch uses **[Streamlink](https://streamlink.github.io/)**, so it can play streams from any platform Streamlink supports. Enhanced display features (Username, Platform, Category, Viewer Count) are available for over 20 popular platforms, including:
 
-- YouTube, Twitch, Kick, TikTok, BiliBili, Douyin, Huya, Vimeo, Dailymotion, PlutoTV
-- Major European broadcasters (BBC iPlayer, ARD/ZDF Mediathek, RaiPlay, RTVE Play, Atresplayer, Mitele)
-- AbemaTV, Adult Swim, Bloomberg, Bigo Live, and more!
+*   YouTube, Twitch, Kick, TikTok
+*   BiliBili, Douyin, Huya, Vimeo, Dailymotion
+*   PlutoTV, BBC iPlayer, ARD/ZDF Mediathek, RaiPlay, RTVE Play, Atresplayer, Mitele
+*   AbemaTV, Adult Swim, Bloomberg, Bigo Live, and more.
 
-If your platform isn't listed, StreamWatch will still try to display what it can, and playback will work if Streamlink supports the URL.
+A generic fallback is used for other platforms.
 
 ---
 
 ## Prerequisites
 
-- **Python 3.7+** ([Download](https://www.python.org/))
-- **Streamlink** (installed automatically with pip)
-- **MPV Media Player** ([Download](https://mpv.io/)) — recommended for best results
+- **Python 3.7+**
+- **Streamlink** (installed automatically with StreamWatch)
+- **MPV Media Player** ([Download](https://mpv.io/)) - **Highly recommended**
 
 ---
 
 ## Installation
 
-### Using pip (Recommended)
+Install StreamWatch using `pip`:
 
 ```bash
 pip install streamwatch
 ```
 
-This will install StreamWatch and all dependencies, including Streamlink.
-
-### From Source (for Development)
+<details>
+<summary><b>Alternative: Installation from Source</b></summary>
 
 ```bash
+# 1. Clone the repository
 git clone https://github.com/snowballons/streamwatch-cli.git
 cd streamwatch-cli
-python -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
-pip install -r requirements.txt
-```
 
-Run StreamWatch from source:
+# 2. Create and activate a virtual environment
+python -m venv .venv
+source .venv/bin/activate  # On Windows: .venv\Scripts\activate
 
-```bash
+# 3. Install in editable mode
+pip install -e ".[dev]"
+
+# 4. Run StreamWatch
 streamwatch
 ```
+</details>
 
 ---
 
 ## Getting Started
 
-### First Run
-
-- On first launch, StreamWatch creates a config directory, a default `config.ini`, and an empty `streams.json`.
-- You'll see a welcome message with instructions.
-
-<p align="center">
-<img src="assets/Images/first-run.png" alt="StreamWatch First Run Experience" width="600"/>
-</p>
-
-### Adding Streams
-
-- From the main menu, press **A** (Add).
-- Enter one or more stream URLs (comma-separated for multiple).
-  - Example:  
+1.  **Run StreamWatch for the first time:**
+    ```bash
+    streamwatch
     ```
-    https://twitch.tv/streamer1, https://youtube.com/@channel2, https://kick.com/user3
-    ```
-- Your streams are saved to `streams.json`.
+    This will create the configuration directory and files.
+
+2.  **Add streams:**
+    - Press `A` in the main menu to add a stream.
+    - Enter a stream URL. To add a custom alias, type it after the URL (e.g., `https://twitch.tv/shroud The FPS King`).
+    - To add multiple streams, separate them with commas.
+
+3.  **Refresh and watch:**
+    - Press `F` to refresh the stream list and see who's live.
+    - Select a stream to start watching.
 
 ---
 
-## Usage Guide
+## Usage
 
-### Main Menu Navigation
+### Main Menu
 
-- **[Enter]**: Select a live stream interactively.
-- **[Number]**: Play a stream by its number.
-- **[L]**: List all configured streams.
-- **[A]**: Add new streams.
-- **[R]**: Remove streams.
-- **[P]**: Play last watched stream (if available).
-- **[F]**: Refresh live stream list.
-- **[Q]**: Quit StreamWatch.
-
-### Playing a Stream
-
-- Select a stream and StreamWatch launches it in your media player via Streamlink.
+| Key(s) | Action                                       |
+|--------|----------------------------------------------|
+| `Enter`  | Open interactive selection for live streams. |
+| `[Number]` | Play a live stream directly by its number.   |
+| `L`      | List all configured streams.                 |
+| `A`      | Add new streams (with optional aliases).     |
+| `R`      | Remove streams from your list.               |
+| `I`      | Import streams from a `.txt` file.           |
+| `E`      | Export your stream list to a `.json` file.   |
+| `P`      | Play the last stream you watched.            |
+| `F`      | Force a refresh of the live stream list.     |
+| `Q`      | Quit StreamWatch.                            |
 
 ### Playback Controls
 
-- **[S]**: Stop stream
-- **[N]**: Next live stream
-- **[P]**: Previous live stream
-- **[C]**: Change quality
-- **[M]**: Main menu
-- **[D]**: Donate to developer
-- **[Q]**: Quit StreamWatch
-
-If the stream ends or you close the player, StreamWatch returns you to the menu. If a stream drops, it will try to reconnect for about 30 seconds.
+| Key(s) | Action                                         |
+|--------|------------------------------------------------|
+| `S`      | Stop the current stream.                       |
+| `N`      | Play the next live stream in the list.         |
+| `P`      | Play the previous live stream in the list.     |
+| `C`      | Change quality on the fly.                     |
+| `M`      | Stop stream and return to the main menu.       |
+| `D`      | Open the developer donation link in your browser.|
+| `Q`      | Stop stream and quit StreamWatch.              |
 
 ---
 
-## Configuration
+## Advanced Configuration
 
-StreamWatch uses two main files:
+### Stream Aliases
 
-### Stream List (`streams.json`)
+Assign custom names to your streams for easier identification. When adding a stream, type the alias after the URL:
 
-- Stores your stream URLs.
-- **Location:**
-  - Linux/macOS: `~/.config/streamwatch/streams.json`
-  - Windows: `%APPDATA%\\StreamWatch\\streams.json`
-- Manage via the [A] (Add) and [R] (Remove) options.
+```
+URL(s) [and optional alias(es)]: https://www.youtube.com/channel/UC-lHJZR3Gqxm24_Vd_AJ5Yw Linus Tech Tips
+```
 
-### Settings (`config.ini`)
+### Using a `streams.d` Directory
 
-- Created on first run, editable with any text editor.
-- **Location:** Same as `streams.json`.
+For advanced stream management, create a `streams.d` directory in your StreamWatch config folder. Inside this directory, create any number of text files (e.g., `gaming.list`, `news.txt`) and add one stream URL per line.
 
-Example:
+StreamWatch will load all streams from `streams.json` and any files in `streams.d` at startup.
 
-```ini
-[Streamlink]
-quality = best
-timeout_liveness = 10
-timeout_metadata = 15
-max_workers_liveness = 4
-max_workers_metadata = 2
-twitch_disable_ads = true
+**Note:** The `A` (Add) and `R` (Remove) commands only affect `streams.json`. To manage streams in `streams.d`, you must edit the files directly.
 
-[Misc]
-donation_link = https://buymeacoffee.com/snowballons
-first_run_completed = true
-last_played_url =
+### Importing & Exporting
+
+- **Import (`I`):** Bulk-add streams from any `.txt` file (one URL per line).
+- **Export (`E`):** Create a backup of your current stream list (including aliases) to a `.json` file.
+
+### Playback Hooks
+
+Automate your environment by running custom scripts before and after a stream plays.
+
+1.  Create an executable script (e.g., `start_stream.sh`, `end_stream.bat`).
+2.  Set the full path to your script in `config.ini` under `pre_playback_hook` or `post_playback_hook`.
+
+StreamWatch passes the following arguments to your script: `url`, `alias`, `username`, `platform`, `quality`.
+
+**Example `hook.sh`:**
+
+```bash
+#!/bin/bash
+TIMESTAMP=$(date "+%Y-%m-%d %H:%M:%S")
+echo "[$TIMESTAMP] Event for alias '$2' on platform '$4' with quality '$5'" >> ~/stream_events.log
 ```
 
 ---
 
-## Logging
+## Configuration File
 
-- Log file for troubleshooting:  
-  - Linux/macOS: `~/.config/streamwatch/logs/streamwatch.log`
-  - Windows: `%APPDATA%\\StreamWatch\\logs\\streamwatch.log`
-- Includes INFO, WARNING, ERROR, and DEBUG messages.
-- Log files are rotated automatically.
+Your settings and stream lists are stored in your user configuration directory:
+
+- **Linux/macOS:** `~/.config/streamwatch/`
+- **Windows:** `%APPDATA%\\StreamWatch\\`
+
+The `config.ini` file is created on the first run and can be edited to customize StreamWatch's behavior.
+
+---
+
+## Troubleshooting
+
+Log files are located in the `logs/` subdirectory of your config folder. These logs contain detailed debug information that can help diagnose problems.
 
 ---
 
 ## Contributing
 
-Contributions, bug reports, and feature requests are welcome!
-
-- **Check Issues:** Search existing issues before submitting.
-- **Open an Issue:** For bugs or ideas, include steps to reproduce, version, OS, and logs if possible.
-- **Pull Requests:** Fork, branch, commit, and submit with a clear description.
+Contributions, bug reports, and feature requests are welcome! Please see the [Contributing Guidelines](CONTRIBUTING.md) for more details. (TODO: Create `CONTRIBUTING.md`)
 
 ---
 
 ## License
 
-StreamWatch is open-source software licensed under the MIT License. See the LICENSE file for details.
+StreamWatch is open-source software licensed under the MIT License. See the `LICENSE` file for details.
 
 ---
 
 ## Acknowledgements
 
-- Built on [Streamlink](https://streamlink.github.io/)
-- UI powered by [Prompt Toolkit](https://python-prompt-toolkit.readthedocs.io/en/master/) and [Rich](https://rich.readthedocs.io/en/stable/)
+StreamWatch is built upon these excellent open-source projects:
 
----
+- [Streamlink](https://streamlink.github.io/)
+- [Rich](https://github.com/Textualize/rich)
+- [Python Prompt Toolkit](https://github.com/prompt-toolkit/python-prompt-toolkit)
 
 Happy Streaming! 📺
-
-
-
-

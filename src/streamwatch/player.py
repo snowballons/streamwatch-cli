@@ -12,6 +12,51 @@ from . import ui
 # Get a logger for this module
 logger = logging.getLogger(config.APP_NAME + ".player")
 
+# --- NEW HOOK EXECUTION FUNCTION ---
+def execute_hook(hook_type, stream_info, quality):
+    """
+    Executes a pre or post-playback hook script if configured.
+    :param hook_type: 'pre' or 'post'
+    :param stream_info: The dictionary of the stream being played.
+    :param quality: The quality the stream is being played at.
+    """
+    if hook_type == 'pre':
+        hook_path_str = config.get_pre_playback_hook()
+    elif hook_type == 'post':
+        hook_path_str = config.get_post_playback_hook()
+    else:
+        return # Invalid hook type
+
+    if not hook_path_str:
+        return # No hook configured for this type
+
+    from pathlib import Path
+    hook_path = Path(hook_path_str).expanduser()
+
+    if not hook_path.is_file():
+        logger.warning(f"Hook script not found at configured path: {hook_path}")
+        return
+
+    # Construct the command with arguments
+    command = [str(hook_path)]
+    # Pass stream info as arguments. Ensure values are strings and handle None.
+    command.append(stream_info.get('url', ''))
+    command.append(stream_info.get('alias', ''))
+    command.append(stream_info.get('username', ''))
+    command.append(stream_info.get('platform', ''))
+    command.append(quality or '')
+
+    logger.info(f"Executing {hook_type}-playback hook: {' '.join(command)}")
+    ui.console.print(f"Executing {hook_type}-playback hook: [dim]{hook_path.name}[/dim]")
+
+    try:
+        # Run the hook script as a non-blocking background process.
+        # This prevents a long-running hook from delaying stream playback.
+        subprocess.Popen(command, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    except Exception as e:
+        logger.error(f"Failed to execute {hook_type}-playback hook script.", exc_info=True)
+        ui.console.print(f"[error]Error running hook script: {e}[/error]")
+
 # --- Configuration for Reconnection (can be removed if not used) ---
 # RECONNECTION_ATTEMPT_DURATION = 30  # seconds
 # RECONNECTION_CHECK_INTERVAL = 5     # seconds
@@ -29,11 +74,11 @@ def launch_player_process(url_to_play, quality):
     """
     ui.console.print(f"Launching: [info]{url_to_play}[/info] at [info]{quality}[/info] quality...")
     logger.info(f"Launching player for {url_to_play} at quality {quality}")
-    
+
     command = ["streamlink"]
     if config.get_twitch_disable_ads() and "twitch.tv" in url_to_play:
         command.append("--twitch-disable-ads")
-    
+
     command.extend([
         url_to_play,
         quality,

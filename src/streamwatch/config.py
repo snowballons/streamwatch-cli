@@ -27,7 +27,9 @@ DEFAULT_CONFIG = {
     'Misc': {
         'donation_link': 'https://buymeacoffee.com/snowballons', # Your actual link
         'first_run_completed': 'false', # For First-Time UX
-        'last_played_url': '' # Add this
+        'last_played_url': '', # Add this
+        'pre_playback_hook': '',  # NEW: Path to a script to run before playback
+        'post_playback_hook': ''  # NEW: Path to a script to run after playback
     }
 }
 
@@ -44,7 +46,7 @@ def get_user_config_dir():
             return Path(xdg_config_home) / APP_NAME
         else:
             return Path.home() / '.config' / APP_NAME
-    return Path.home() / f".{APP_NAME}" # Fallback
+    return Path(Path.home(), f".{APP_NAME}") # Fallback
 
 USER_CONFIG_DIR = get_user_config_dir()
 CONFIG_FILE_PATH = USER_CONFIG_DIR / "config.ini"
@@ -62,7 +64,7 @@ def create_default_config_file():
             temp_parser[section] = {}
             for key, value in options.items():
                 temp_parser[section][key] = str(value)
-        
+
         try:
             with open(CONFIG_FILE_PATH, 'w', encoding='utf-8') as configfile:
                 temp_parser.write(configfile)
@@ -76,7 +78,7 @@ def create_default_config_file():
 def load_config():
     """Loads configuration from file, falling back to defaults."""
     global config_parser # Use the module-level parser
-    
+
     # Ensure USER_CONFIG_DIR exists before trying to read/write config
     try:
         USER_CONFIG_DIR.mkdir(parents=True, exist_ok=True)
@@ -161,6 +163,13 @@ def set_last_played_url(url):
     except IOError as e:
         logger = logging.getLogger(APP_NAME + ".config")
         logger.error(f"Could not update config file for last_played_url: {e}")
+
+# --- NEW Accessor Functions for Hooks ---
+def get_pre_playback_hook():
+    return config_parser.get('Misc', 'pre_playback_hook', fallback='')
+
+def get_post_playback_hook():
+    return config_parser.get('Misc', 'post_playback_hook', fallback='')
 
 # --- Load config when module is imported ---
 load_config()
