@@ -150,8 +150,7 @@ class CommandInvoker:
         Returns:
             bool: True if there are undoable commands, False otherwise
         """
-        return (len(self.undo_stack) > 0 and
-                self.undo_stack[-1].can_undo())
+        return len(self.undo_stack) > 0 and self.undo_stack[-1].can_undo()
 
     def get_last_command(self) -> Optional[Command]:
         """
@@ -160,8 +159,7 @@ class CommandInvoker:
         Returns:
             Optional[Command]: The last executed command, or None if no commands have been executed
         """
-        return (self.command_history[-1] if self.command_history
-                else None)
+        return self.command_history[-1] if self.command_history else None
 
     def get_last_undoable_command(self) -> Optional[UndoableCommand]:
         """
@@ -170,8 +168,7 @@ class CommandInvoker:
         Returns:
             Optional[UndoableCommand]: The last undoable command, or None if no undoable commands exist
         """
-        return (self.undo_stack[-1] if self.undo_stack
-                else None)
+        return self.undo_stack[-1] if self.undo_stack else None
 
     def _add_to_history(self, command: Command) -> None:
         """
