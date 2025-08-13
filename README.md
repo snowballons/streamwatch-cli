@@ -36,6 +36,7 @@
     *   [Importing & Exporting](#importing--exporting)
     *   [Playback Hooks](#playback-hooks)
 *   [Configuration File](#configuration-file)
+*   [Development Setup](#development-setup)
 *   [Troubleshooting](#troubleshooting)
 *   [Contributing](#contributing)
 *   [License](#license)
@@ -225,6 +226,100 @@ The `config.ini` file is created on the first run and can be edited to customize
 
 ---
 
+## Development Setup
+
+If you want to contribute to StreamWatch or run it from source, follow these steps:
+
+### Prerequisites for Development
+
+- **Python 3.8+**
+- **uv** (recommended) or **pip**
+- **Git**
+
+### Setting Up the Development Environment
+
+1. **Clone the repository:**
+   ```bash
+   git clone https://github.com/snowballons/streamwatch-cli.git
+   cd streamwatch-cli
+   ```
+
+2. **Install dependencies using uv (recommended):**
+   ```bash
+   # Install all dependencies including development tools
+   uv sync --dev
+
+   # Or using the dependency groups
+   uv sync --group dev
+   ```
+
+   **Alternative with pip:**
+   ```bash
+   # Create and activate virtual environment
+   python -m venv .venv
+   source .venv/bin/activate  # On Windows: .venv\Scripts\activate
+
+   # Install in editable mode with dev dependencies
+   pip install -e ".[dev]"
+   ```
+
+3. **Set up pre-commit hooks:**
+   ```bash
+   # Using uv
+   uv run pre-commit install
+
+   # Or with pip
+   pre-commit install
+   ```
+
+4. **Run the development version:**
+   ```bash
+   # Using uv
+   uv run streamwatch
+
+   # Or with pip (after activating venv)
+   streamwatch
+   ```
+
+### Development Tools
+
+The project includes several development tools configured via pre-commit hooks:
+
+- **Black**: Code formatting
+- **isort**: Import sorting
+- **Flake8**: Linting and style checking
+- **MyPy**: Static type checking
+- **Bandit**: Security vulnerability scanning
+
+### Running Tests
+
+```bash
+# Run all tests
+uv run pytest
+
+# Run tests with coverage
+uv run pytest --cov=src/streamwatch --cov-report=html
+
+# Run specific test file
+uv run pytest tests/test_stream_utils.py
+```
+
+### Code Quality Checks
+
+```bash
+# Run all pre-commit hooks manually
+uv run pre-commit run --all-files
+
+# Run specific tools
+uv run black src/ tests/
+uv run isort src/ tests/
+uv run flake8 src/ tests/
+uv run mypy src/
+uv run bandit -r src/
+```
+
+---
+
 ## Troubleshooting
 
 Log files are located in the `logs/` subdirectory of your config folder. These logs contain detailed debug information that can help diagnose problems.
@@ -233,7 +328,7 @@ Log files are located in the `logs/` subdirectory of your config folder. These l
 
 ## Contributing
 
-Contributions, bug reports, and feature requests are welcome! Please see the [Contributing Guidelines](CONTRIBUTING.md) for more details. (TODO: Create `CONTRIBUTING.md`)
+Contributions, bug reports, and feature requests are welcome! Please see the [Contributing Guidelines](CONTRIBUTING.md) for more details.
 
 ---
 

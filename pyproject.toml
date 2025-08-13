@@ -6,7 +6,7 @@ readme = "README.md"
 authors = [
     { name = "Johny Snow", email = "snowballons@protonmail.com" }
 ]
-requires-python = ">=3.8"
+requires-python = ">=3.8.1"
 license = { file = "LICENSE" }
 dependencies = [
     "streamlink>=6.0.0",
@@ -38,7 +38,20 @@ classifiers = [
 ]
 
 [project.optional-dependencies]
-dev = ["pytest", "pytest-mock", "twine"]
+dev = [
+    "pytest",
+    "pytest-mock",
+    "pytest-cov",
+    "pytest-asyncio",
+    "twine",
+    "pre-commit",
+    "black",
+    "isort",
+    "flake8",
+    "mypy",
+    "types-requests",
+    "bandit"
+]
 
 [project.urls]
 Homepage = "https://snowballons.github.io/streamwatch-cli"
@@ -51,3 +64,18 @@ streamwatch = "streamwatch.main:app"
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
+
+[dependency-groups]
+dev = [
+    "pre-commit>=3.5.0",
+    "black>=23.0.0",
+    "isort>=5.12.0",
+    "flake8>=6.0.0",
+    "mypy>=1.0.0",
+    "pytest>=7.0.0",
+    "pytest-cov>=4.0.0",
+    "pytest-mock>=3.10.0",
+    "pytest-asyncio>=0.21.0",
+    "bandit>=1.7.0",
+    "types-requests>=2.28.0",
+]

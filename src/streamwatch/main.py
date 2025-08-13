@@ -1,25 +1,32 @@
+import logging  # Import logging
 import subprocess
 import sys
-import logging # Import logging
-from logging.handlers import RotatingFileHandler # For log rotation
-from pathlib import Path # To construct log path
+from logging.handlers import RotatingFileHandler  # For log rotation
 
+from . import config  # To get USER_CONFIG_DIR
+from . import ui  # For clear_screen
 from . import core
-from . import ui # For clear_screen
-from . import config # To get USER_CONFIG_DIR
+
+# from pathlib import Path  # To construct log path
+
 
 # --- Setup Logging ---
-def setup_logging():
+def setup_logging() -> None:
+    """Sets up logging configuration for the application."""
     log_dir = config.USER_CONFIG_DIR / "logs"
     log_dir.mkdir(parents=True, exist_ok=True)
     log_file = log_dir / "streamwatch.log"
 
     # Max 1MB per log file, keep 3 backup logs
-    file_handler = RotatingFileHandler(log_file, maxBytes=1*1024*1024, backupCount=3, encoding='utf-8')
+    file_handler = RotatingFileHandler(
+        log_file, maxBytes=1 * 1024 * 1024, backupCount=3, encoding="utf-8"
+    )
     # More detailed format for file logs
-    file_formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(module)s.%(funcName)s:%(lineno)d - %(message)s')
+    file_formatter = logging.Formatter(
+        "%(asctime)s - %(name)s - %(levelname)s - %(module)s.%(funcName)s:%(lineno)d - %(message)s"
+    )
     file_handler.setFormatter(file_formatter)
-    file_handler.setLevel(logging.DEBUG) # Log everything DEBUG and above to file
+    file_handler.setLevel(logging.DEBUG)  # Log everything DEBUG and above to file
 
     # Console handler for rich (optional, rich can handle its own console output)
     # If you want to use Python's logging for console as well, styled by rich:
@@ -28,9 +35,11 @@ def setup_logging():
     # console_handler.setLevel(logging.INFO) # Log INFO and above to console
 
     # Get the root logger
-    root_logger = logging.getLogger() # Get root logger
-    if not root_logger.handlers: # Add handlers only if not already configured (e.g. by other imports)
-        root_logger.setLevel(logging.DEBUG) # Set root logger level to lowest (DEBUG)
+    root_logger = logging.getLogger()  # Get root logger
+    if (
+        not root_logger.handlers
+    ):  # Add handlers only if not already configured (e.g. by other imports)
+        root_logger.setLevel(logging.DEBUG)  # Set root logger level to lowest (DEBUG)
         root_logger.addHandler(file_handler)
         # root_logger.addHandler(console_handler) # Uncomment if using RichHandler for console
 
@@ -39,33 +48,47 @@ def setup_logging():
     # if not logger.handlers:
     #     logger.setLevel(logging.DEBUG)
     #     logger.addHandler(file_handler)
-        # logger.addHandler(console_handler) # If you want this specific logger to also output to console
+    # logger.addHandler(console_handler) # If you want this specific logger to also output to console
 
-def initial_streamlink_check():
+
+def initial_streamlink_check() -> bool:
     """Checks if streamlink command is available and executable."""
     try:
         # Use --version as a lightweight check
-        subprocess.run(["streamlink", "--version"], capture_output=True, check=True, timeout=5)
+        subprocess.run(
+            ["streamlink", "--version"], capture_output=True, check=True, timeout=5
+        )
         return True
     except FileNotFoundError:
         print("CRITICAL ERROR: streamlink command not found.", file=sys.stderr)
-        print("Please ensure streamlink is installed and in your system's PATH.", file=sys.stderr)
+        print(
+            "Please ensure streamlink is installed and in your system's PATH.",
+            file=sys.stderr,
+        )
         return False
     except (subprocess.CalledProcessError, subprocess.TimeoutExpired) as e:
-        print(f"CRITICAL ERROR: streamlink found but is not working correctly: {e}", file=sys.stderr)
+        print(
+            f"CRITICAL ERROR: streamlink found but is not working correctly: {e}",
+            file=sys.stderr,
+        )
         return False
-    except Exception as e: # Catch any other unexpected errors
-        print(f"CRITICAL ERROR: An unexpected issue occurred while checking for streamlink: {e}", file=sys.stderr)
+    except Exception as e:  # Catch any other unexpected errors
+        print(
+            f"CRITICAL ERROR: An unexpected issue occurred while checking for streamlink: {e}",
+            file=sys.stderr,
+        )
         return False
 
-def app():
+
+def app() -> None:
     """Main entry point for the StreamWatch CLI application (for script entry point)."""
     main()
 
-def main():
+
+def main() -> None:
     """Entry point for the StreamWatch CLI application."""
-    setup_logging() # <<<<<<<<<<<<<<<<<<<<<<<<< ADD THIS
-    logger = logging.getLogger(config.APP_NAME) # Get a named logger
+    setup_logging()  # <<<<<<<<<<<<<<<<<<<<<<<<< ADD THIS
+    logger = logging.getLogger(config.APP_NAME)  # Get a named logger
     logger.info("StreamWatch application started.")
 
     if not initial_streamlink_check():
@@ -78,17 +101,28 @@ def main():
     except KeyboardInterrupt:
         logger.info("Application interrupted by user (KeyboardInterrupt).")
         ui.clear_screen()
-        ui.console.print("\nScript interrupted by user. Exiting gracefully. Goodbye!", style="info")
+        ui.console.print(
+            "\nScript interrupted by user. Exiting gracefully. Goodbye!", style="info"
+        )
     except Exception as e:
-        logger.critical("An unexpected critical error occurred in the application.", exc_info=True)
+        logger.critical(
+            "An unexpected critical error occurred in the application.", exc_info=True
+        )
         ui.clear_screen()
-        ui.console.print(f"\n[error]An unexpected critical error occurred: {e}[/error]", style="error")
+        ui.console.print(
+            f"\n[error]An unexpected critical error occurred: {e}[/error]",
+            style="error",
+        )
         ui.console.print("Please check the log file for more details.", style="dimmed")
-        ui.console.print(f"Log file location: {config.USER_CONFIG_DIR / 'logs' / 'streamwatch.log'}", style="dimmed")
+        ui.console.print(
+            f"Log file location: {config.USER_CONFIG_DIR / 'logs' / 'streamwatch.log'}",
+            style="dimmed",
+        )
         sys.exit(1)
     logger.info("StreamWatch application finished.")
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     # This allows running the script directly like: python -m stream_manager_cli.main
     # However, the primary execution method after packaging will be via the entry point.
     main()
