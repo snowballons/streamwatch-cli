@@ -20,6 +20,19 @@ DEFAULT_CONFIG: Dict[str, Dict[str, str]] = {
         "max_workers_metadata": "2",  # Often fewer streams need metadata fetch
         "twitch_disable_ads": "true",
     },
+    "Resilience": {
+        # Retry configuration
+        "retry_max_attempts": "3",  # Maximum retry attempts
+        "retry_base_delay": "1.0",  # Base delay in seconds
+        "retry_max_delay": "60.0",  # Maximum delay in seconds
+        "retry_exponential_base": "2.0",  # Exponential backoff multiplier
+        "retry_jitter": "true",  # Add random jitter
+        # Circuit breaker configuration
+        "circuit_breaker_failure_threshold": "5",  # Failures before opening circuit
+        "circuit_breaker_recovery_timeout": "60.0",  # Recovery timeout in seconds
+        "circuit_breaker_success_threshold": "2",  # Successes needed to close circuit
+        "circuit_breaker_enabled": "true",  # Enable circuit breaker pattern
+    },
     "Interface": {
         # Color settings could go here later
         # 'color_live': 'green',
@@ -178,6 +191,89 @@ def get_twitch_disable_ads() -> bool:
         "Streamlink",
         "twitch_disable_ads",
         fallback=DEFAULT_CONFIG["Streamlink"]["twitch_disable_ads"].lower() == "true",
+    )
+
+
+# --- Resilience Configuration Accessors ---
+
+def get_retry_max_attempts() -> int:
+    """Get the maximum number of retry attempts."""
+    return config_parser.getint(
+        "Resilience",
+        "retry_max_attempts",
+        fallback=int(DEFAULT_CONFIG["Resilience"]["retry_max_attempts"]),
+    )
+
+
+def get_retry_base_delay() -> float:
+    """Get the base delay for retry attempts in seconds."""
+    return config_parser.getfloat(
+        "Resilience",
+        "retry_base_delay",
+        fallback=float(DEFAULT_CONFIG["Resilience"]["retry_base_delay"]),
+    )
+
+
+def get_retry_max_delay() -> float:
+    """Get the maximum delay for retry attempts in seconds."""
+    return config_parser.getfloat(
+        "Resilience",
+        "retry_max_delay",
+        fallback=float(DEFAULT_CONFIG["Resilience"]["retry_max_delay"]),
+    )
+
+
+def get_retry_exponential_base() -> float:
+    """Get the exponential base for backoff calculation."""
+    return config_parser.getfloat(
+        "Resilience",
+        "retry_exponential_base",
+        fallback=float(DEFAULT_CONFIG["Resilience"]["retry_exponential_base"]),
+    )
+
+
+def get_retry_jitter() -> bool:
+    """Get whether to add jitter to retry delays."""
+    return config_parser.getboolean(
+        "Resilience",
+        "retry_jitter",
+        fallback=DEFAULT_CONFIG["Resilience"]["retry_jitter"].lower() == "true",
+    )
+
+
+def get_circuit_breaker_failure_threshold() -> int:
+    """Get the failure threshold for circuit breaker."""
+    return config_parser.getint(
+        "Resilience",
+        "circuit_breaker_failure_threshold",
+        fallback=int(DEFAULT_CONFIG["Resilience"]["circuit_breaker_failure_threshold"]),
+    )
+
+
+def get_circuit_breaker_recovery_timeout() -> float:
+    """Get the recovery timeout for circuit breaker in seconds."""
+    return config_parser.getfloat(
+        "Resilience",
+        "circuit_breaker_recovery_timeout",
+        fallback=float(DEFAULT_CONFIG["Resilience"]["circuit_breaker_recovery_timeout"]),
+    )
+
+
+def get_circuit_breaker_success_threshold() -> int:
+    """Get the success threshold for circuit breaker recovery."""
+    return config_parser.getint(
+        "Resilience",
+        "circuit_breaker_success_threshold",
+        fallback=int(DEFAULT_CONFIG["Resilience"]["circuit_breaker_success_threshold"]),
+    )
+
+
+def get_circuit_breaker_enabled() -> bool:
+    """Get whether circuit breaker pattern is enabled."""
+    return config_parser.getboolean(
+        "Resilience",
+        "circuit_breaker_enabled",
+        fallback=DEFAULT_CONFIG["Resilience"]["circuit_breaker_enabled"].lower() == "true",
     )
 
 

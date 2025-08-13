@@ -4,25 +4,133 @@ import re
 import subprocess
 import sys
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 from . import config
+from .exceptions import (
+    StreamlinkError, StreamNotFoundError, NetworkError,
+    AuthenticationError, TimeoutError, categorize_streamlink_error
+)
 from .models import StreamInfo, StreamMetadata, StreamStatus
+from .resilience import (
+    RetryConfig, CircuitBreakerConfig, resilient_operation,
+    get_circuit_breaker, CircuitBreakerOpenError
+)
 from .stream_utils import parse_url_metadata  # IMPORT THE NEW FUNCTION
 
 # Get a logger for this module
 logger = logging.getLogger(config.APP_NAME + ".stream_checker")
 
 
+def _get_retry_config() -> RetryConfig:
+    """Get retry configuration from app config."""
+    return RetryConfig(
+        max_attempts=config.get_retry_max_attempts(),
+        base_delay=config.get_retry_base_delay(),
+        max_delay=config.get_retry_max_delay(),
+        exponential_base=config.get_retry_exponential_base(),
+        jitter=config.get_retry_jitter()
+    )
+
+
+def _get_circuit_breaker_config() -> CircuitBreakerConfig:
+    """Get circuit breaker configuration from app config."""
+    return CircuitBreakerConfig(
+        failure_threshold=config.get_circuit_breaker_failure_threshold(),
+        recovery_timeout=config.get_circuit_breaker_recovery_timeout(),
+        success_threshold=config.get_circuit_breaker_success_threshold()
+    )
+
+
+class StreamCheckResult:
+    """
+    Represents the result of a stream liveness check with detailed error information.
+    """
+
+    def __init__(self, is_live: bool, url: str, error: Optional[StreamlinkError] = None):
+        """
+        Initialize StreamCheckResult.
+
+        Args:
+            is_live: Whether the stream is live
+            url: The stream URL that was checked
+            error: Detailed error information if check failed
+        """
+        self.is_live = is_live
+        self.url = url
+        self.error = error
+
+    def to_dict(self) -> Dict[str, Any]:
+        """Convert result to dictionary for structured logging/debugging."""
+        result = {
+            'is_live': self.is_live,
+            'url': self.url
+        }
+        if self.error:
+            result['error'] = self.error.to_dict()
+        return result
+
+
+class MetadataResult:
+    """
+    Represents the result of a stream metadata fetch with detailed error information.
+    """
+
+    def __init__(self, success: bool, url: str, json_data: Optional[str] = None,
+                 error: Optional[StreamlinkError] = None):
+        """
+        Initialize MetadataResult.
+
+        Args:
+            success: Whether the metadata fetch was successful
+            url: The stream URL that was processed
+            json_data: The JSON metadata string if successful
+            error: Detailed error information if fetch failed
+        """
+        self.success = success
+        self.url = url
+        self.json_data = json_data
+        self.error = error
+
+    def to_dict(self) -> Dict[str, Any]:
+        """Convert result to dictionary for structured logging/debugging."""
+        result = {
+            'success': self.success,
+            'url': self.url,
+            'has_json_data': self.json_data is not None
+        }
+        if self.error:
+            result['error'] = self.error.to_dict()
+        return result
+
+
 def is_stream_live_for_check(url: str) -> Tuple[bool, str]:
     """
     Checks if a given stream URL is currently live using streamlink.
+
+    This is a backward-compatible wrapper around is_stream_live_for_check_detailed
+    for existing code that expects the old return format.
 
     Args:
         url: The stream URL to check
 
     Returns:
         Tuple of (is_live, url)
+    """
+    result = is_stream_live_for_check_detailed(url)
+    return result.is_live, result.url
+
+
+def _is_stream_live_core(url: str) -> StreamCheckResult:
+    """
+    Core implementation for checking if a stream URL is live.
+    This is the base function without resilience patterns.
+
+    Args:
+        url: The stream URL to check
+
+    Returns:
+        StreamCheckResult: Detailed result with error categorization
     """
     command = ["streamlink"]
     if config.get_twitch_disable_ads():
@@ -37,43 +145,135 @@ def is_stream_live_for_check(url: str) -> Tuple[bool, str]:
             timeout=config.get_streamlink_timeout_liveness(),
             check=False,
         )
+
         if process.returncode == 0 and "Available streams:" in process.stdout:
             logger.debug(f"Stream is live: {url}")
-            return True, url
+            return StreamCheckResult(is_live=True, url=url)
 
-        stderr_lower = process.stderr.lower()
-        stdout_lower = process.stdout.lower()
-        if (
-            "no playable streams found" in stderr_lower
-            or "error: no streams found on" in stderr_lower
-            or "this stream is offline" in stdout_lower
-            or process.returncode != 0
-        ):
-            logger.info(f"Stream is not live: {url}")
-            return False, url
-        logger.warning(f"Ambiguous liveness result for: {url}")
-        return False, url  # Default to not live for ambiguous cases
+        # Stream is not live or error occurred - categorize the error
+        error = categorize_streamlink_error(
+            stderr=process.stderr or "",
+            stdout=process.stdout or "",
+            return_code=process.returncode,
+            url=url
+        )
+
+        # Log appropriate level based on error type
+        if isinstance(error, StreamNotFoundError):
+            logger.info(f"Stream is not live: {url} - {error}")
+        elif isinstance(error, (NetworkError, AuthenticationError)):
+            logger.warning(f"Stream check failed: {url} - {error}")
+        else:
+            logger.warning(f"Ambiguous liveness result for: {url} - {error}")
+
+        return StreamCheckResult(is_live=False, url=url, error=error)
+
     except subprocess.TimeoutExpired:
+        error = TimeoutError(
+            f"Timeout expired checking liveness for: {url}",
+            url=url
+        )
         logger.warning(f"Timeout expired checking liveness for: {url}")
-        return False, url
+        return StreamCheckResult(is_live=False, url=url, error=error)
+
     except FileNotFoundError:
         logger.critical("streamlink command not found during check.")
         raise FileNotFoundError("streamlink command not found during check.")
-    except (
-        Exception
-    ) as e:  # Catch any other exception during the check for a single stream
+
+    except Exception as e:
+        # Wrap unexpected exceptions in StreamlinkError
+        error = StreamlinkError(
+            f"Unexpected error checking liveness: {str(e)}",
+            url=url
+        )
         logger.exception(f"Error checking liveness for {url}")
-        return False, url
+        return StreamCheckResult(is_live=False, url=url, error=error)
+
+
+def is_stream_live_for_check_detailed(url: str) -> StreamCheckResult:
+    """
+    Checks if a given stream URL is currently live using streamlink with detailed error information
+    and resilience patterns (retry logic and circuit breaker).
+
+    Args:
+        url: The stream URL to check
+
+    Returns:
+        StreamCheckResult: Detailed result with error categorization
+    """
+    if not config.get_circuit_breaker_enabled():
+        # If resilience is disabled, use the core function directly
+        return _is_stream_live_core(url)
+
+    try:
+        # Use resilient operation with retry and circuit breaker
+        @resilient_operation(
+            operation_name=f"stream_liveness_check_{url}",
+            retry_config=_get_retry_config(),
+            circuit_breaker_config=_get_circuit_breaker_config(),
+            use_circuit_breaker=True
+        )
+        def resilient_check():
+            result = _is_stream_live_core(url)
+            # If the result indicates an error that should trigger circuit breaker,
+            # raise the exception to be handled by resilience patterns
+            if result.error and isinstance(result.error, (NetworkError, TimeoutError)):
+                raise result.error
+            return result
+
+        return resilient_check()
+
+    except CircuitBreakerOpenError as e:
+        # Circuit breaker is open - return a specific error
+        error = NetworkError(
+            f"Circuit breaker open for stream checks: {str(e)}",
+            url=url
+        )
+        logger.warning(f"Circuit breaker open for stream liveness check: {url}")
+        return StreamCheckResult(is_live=False, url=url, error=error)
+
+    except Exception as e:
+        # Handle any other exceptions from resilience patterns
+        if isinstance(e, StreamlinkError):
+            return StreamCheckResult(is_live=False, url=url, error=e)
+        else:
+            error = StreamlinkError(f"Resilience pattern error: {str(e)}", url=url)
+            return StreamCheckResult(is_live=False, url=url, error=error)
 
 
 def get_stream_metadata_json(url: str) -> Tuple[bool, str]:
-    """Fetches stream metadata using streamlink --json.
+    """
+    Fetches stream metadata using streamlink --json.
+
+    This is a backward-compatible wrapper around get_stream_metadata_json_detailed
+    for existing code that expects the old return format.
 
     Args:
         url: The stream URL to get metadata for
 
     Returns:
         Tuple of (success, json_string_or_error_message)
+    """
+    try:
+        result = get_stream_metadata_json_detailed(url)
+        if result.success:
+            return (True, result.json_data)
+        else:
+            return (False, str(result.error) if result.error else "Unknown error")
+    except Exception as e:
+        return (False, str(e))
+
+
+def _get_stream_metadata_core(url: str) -> 'MetadataResult':
+    """
+    Core implementation for fetching stream metadata.
+    This is the base function without resilience patterns.
+
+    Args:
+        url: The stream URL to get metadata for
+
+    Returns:
+        MetadataResult: Detailed result with error categorization
     """
     command = ["streamlink", "--twitch-disable-ads", url, "--json"]
     if (
@@ -91,30 +291,104 @@ def get_stream_metadata_json(url: str) -> Tuple[bool, str]:
             timeout=config.get_streamlink_timeout_metadata(),  # Slightly longer timeout for JSON
             check=False,  # Don't crash on non-zero, parse stderr
         )
+
         if process.returncode == 0 and process.stdout:
             try:
-                return (True, process.stdout)
-            except Exception as e:
+                # Validate JSON format
+                json.loads(process.stdout)  # This will raise if invalid JSON
+                return MetadataResult(success=True, json_data=process.stdout, url=url)
+            except json.JSONDecodeError as e:
+                error = StreamlinkError(
+                    f"Invalid JSON response: {str(e)}",
+                    url=url, stdout=process.stdout, stderr=process.stderr,
+                    return_code=process.returncode
+                )
                 logger.warning(f"Could not process JSON for {url}: {e}")
-                return (False, f"JSON processing error: {e}")
-        logger.warning(
-            f"streamlink --json for {url} failed. stderr: {process.stderr[:100]}"
+                return MetadataResult(success=False, url=url, error=error)
+
+        # Metadata fetch failed - categorize the error
+        error = categorize_streamlink_error(
+            stderr=process.stderr or "",
+            stdout=process.stdout or "",
+            return_code=process.returncode,
+            url=url
         )
-        return (
-            False,
-            f"streamlink failed: {process.stderr[:100] if process.stderr else 'Unknown error'}",
-        )
+
+        logger.warning(f"streamlink --json for {url} failed - {error}")
+        return MetadataResult(success=False, url=url, error=error)
+
     except subprocess.TimeoutExpired:
+        error = TimeoutError(
+            f"Timeout fetching JSON metadata for {url}",
+            url=url
+        )
         logger.warning(f"Timeout fetching JSON metadata for {url}")
-        return (False, "Timeout expired")
+        return MetadataResult(success=False, url=url, error=error)
+
     except FileNotFoundError:
         logger.critical("streamlink command not found during JSON metadata fetch.")
         raise FileNotFoundError(
             "streamlink command not found during JSON metadata fetch."
         )
     except Exception as e:
+        # Wrap unexpected exceptions in StreamlinkError
+        error = StreamlinkError(
+            f"Unexpected error fetching metadata: {str(e)}",
+            url=url
+        )
         logger.exception(f"Error fetching JSON metadata for {url}")
-        return None
+        return MetadataResult(success=False, url=url, error=error)
+
+
+def get_stream_metadata_json_detailed(url: str) -> 'MetadataResult':
+    """
+    Fetches stream metadata using streamlink --json with detailed error information
+    and resilience patterns (retry logic and circuit breaker).
+
+    Args:
+        url: The stream URL to get metadata for
+
+    Returns:
+        MetadataResult: Detailed result with error categorization
+    """
+    if not config.get_circuit_breaker_enabled():
+        # If resilience is disabled, use the core function directly
+        return _get_stream_metadata_core(url)
+
+    try:
+        # Use resilient operation with retry and circuit breaker
+        @resilient_operation(
+            operation_name=f"stream_metadata_fetch_{url}",
+            retry_config=_get_retry_config(),
+            circuit_breaker_config=_get_circuit_breaker_config(),
+            use_circuit_breaker=True
+        )
+        def resilient_fetch():
+            result = _get_stream_metadata_core(url)
+            # If the result indicates an error that should trigger circuit breaker,
+            # raise the exception to be handled by resilience patterns
+            if not result.success and result.error and isinstance(result.error, (NetworkError, TimeoutError)):
+                raise result.error
+            return result
+
+        return resilient_fetch()
+
+    except CircuitBreakerOpenError as e:
+        # Circuit breaker is open - return a specific error
+        error = NetworkError(
+            f"Circuit breaker open for metadata fetch: {str(e)}",
+            url=url
+        )
+        logger.warning(f"Circuit breaker open for metadata fetch: {url}")
+        return MetadataResult(success=False, url=url, error=error)
+
+    except Exception as e:
+        # Handle any other exceptions from resilience patterns
+        if isinstance(e, StreamlinkError):
+            return MetadataResult(success=False, url=url, error=e)
+        else:
+            error = StreamlinkError(f"Resilience pattern error: {str(e)}", url=url)
+            return MetadataResult(success=False, url=url, error=error)
 
 
 def extract_category_keywords(

@@ -5,7 +5,7 @@ from logging.handlers import RotatingFileHandler  # For log rotation
 
 from . import config  # To get USER_CONFIG_DIR
 from . import ui  # For clear_screen
-from . import core
+from .app import StreamWatchApp
 
 # from pathlib import Path  # To construct log path
 
@@ -87,8 +87,8 @@ def app() -> None:
 
 def main() -> None:
     """Entry point for the StreamWatch CLI application."""
-    setup_logging()  # <<<<<<<<<<<<<<<<<<<<<<<<< ADD THIS
-    logger = logging.getLogger(config.APP_NAME)  # Get a named logger
+    setup_logging()
+    logger = logging.getLogger(config.APP_NAME)
     logger.info("StreamWatch application started.")
 
     if not initial_streamlink_check():
@@ -97,7 +97,9 @@ def main() -> None:
         sys.exit(1)
 
     try:
-        core.run_interactive_loop()
+        # Create and run the StreamWatch application with dependency injection
+        app = StreamWatchApp()
+        app.run()
     except KeyboardInterrupt:
         logger.info("Application interrupted by user (KeyboardInterrupt).")
         ui.clear_screen()

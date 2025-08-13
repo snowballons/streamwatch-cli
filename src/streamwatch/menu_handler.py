@@ -24,10 +24,16 @@ logger = logging.getLogger(config.APP_NAME + ".menu_handler")
 class MenuHandler:
     """Handles menu display and user input processing for the StreamWatch application."""
 
-    def __init__(self):
-        """Initialize the MenuHandler."""
+    def __init__(self, command_invoker: CommandInvoker = None):
+        """
+        Initialize the MenuHandler.
+
+        Args:
+            command_invoker: CommandInvoker instance for executing commands.
+                           If None, a new instance will be created.
+        """
         self.last_message = ""
-        self.command_invoker = CommandInvoker()
+        self.command_invoker = command_invoker or CommandInvoker()
 
     def display_main_menu(self, live_streams_count: int) -> None:
         """Display the main menu with current status."""
