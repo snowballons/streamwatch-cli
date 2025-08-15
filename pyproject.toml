@@ -18,6 +18,8 @@ dependencies = [
     "lxml",
     "pycryptodome",
     "websocket-client",
+    "pydantic>=2.0.0",
+    "validators>=0.22.0",
 ]
 keywords = ["stream", "streamlink", "twitch", "youtube", "live", "cli", "manager", "player", "interactive"]
 classifiers = [

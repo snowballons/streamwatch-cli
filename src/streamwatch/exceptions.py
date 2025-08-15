@@ -215,3 +215,36 @@ def categorize_streamlink_error(stderr: str, stdout: str, return_code: int,
         f"Streamlink command failed with return code {return_code}",
         url=url, stderr=stderr, stdout=stdout, return_code=return_code
     )
+
+
+class RateLimitExceededError(StreamlinkError):
+    """
+    Exception raised when rate limiting prevents a request from proceeding.
+
+    This exception is raised when the rate limiter determines that too many
+    requests have been made and the request should be delayed or skipped.
+    """
+
+    def __init__(self, message: str, url: Optional[str] = None,
+                 platform: Optional[str] = None, retry_after: Optional[float] = None):
+        """
+        Initialize RateLimitExceededError.
+
+        Args:
+            message: Human-readable error message
+            url: The stream URL that was rate limited
+            platform: The platform that was rate limited
+            retry_after: Suggested time to wait before retrying (seconds)
+        """
+        super().__init__(message, url=url)
+        self.platform = platform
+        self.retry_after = retry_after
+
+    def to_dict(self) -> Dict[str, Any]:
+        """Convert exception to dictionary for structured logging/debugging."""
+        result = super().to_dict()
+        result.update({
+            'platform': self.platform,
+            'retry_after': self.retry_after
+        })
+        return result

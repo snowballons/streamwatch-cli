@@ -18,6 +18,15 @@ from .commands import (
     RemoveStreamCommand,
 )
 
+# Import pagination utilities
+try:
+    from .ui.pagination import get_stream_list_manager
+    from .ui.input_handler import handle_pagination_command
+    from .ui.display import display_paginated_stream_list, display_filter_summary
+    PAGINATION_AVAILABLE = True
+except ImportError:
+    PAGINATION_AVAILABLE = False
+
 logger = logging.getLogger(config.APP_NAME + ".menu_handler")
 
 
@@ -34,6 +43,7 @@ class MenuHandler:
         """
         self.last_message = ""
         self.command_invoker = command_invoker or CommandInvoker()
+        self.use_pagination = PAGINATION_AVAILABLE and config.get_lazy_load_threshold() > 0
 
     def display_main_menu(self, live_streams_count: int) -> None:
         """Display the main menu with current status."""
@@ -175,7 +185,67 @@ class MenuHandler:
             if not result.should_continue:
                 sys.exit(0)
 
+        else:
+            # Check if it's a pagination command
+            if PAGINATION_AVAILABLE:
+                # Get all streams for pagination context
+                all_streams = stream_manager.load_streams() if hasattr(stream_manager, 'load_streams') else live_streams
+
+                if handle_pagination_command(choice, all_streams):
+                    # Pagination command was handled, no refresh needed
+                    # The pagination system manages its own display
+                    pass
+                else:
+                    # Unknown command
+                    logger.warning(f"Unknown command: {choice}")
+                    self.last_message = f"Unknown command: '{choice}'. Type 'h' for help."
+            else:
+                # Unknown command without pagination
+                logger.warning(f"Unknown command: {choice}")
+                self.last_message = f"Unknown command: '{choice}'. Type 'h' for help."
+
         return needs_refresh, should_continue
+
+    def display_streams_with_pagination(self, streams: List[Dict[str, Any]], title: str = "--- Live Streams ---") -> None:
+        """
+        Display streams with pagination support if enabled and threshold is met.
+
+        Args:
+            streams: List of streams to display
+            title: Title to display above the streams
+        """
+        if not streams:
+            ui.console.print("No streams to display.", style="dimmed")
+            return
+
+        # Check if pagination should be used
+        should_paginate = (
+            PAGINATION_AVAILABLE and
+            self.use_pagination and
+            len(streams) >= config.get_lazy_load_threshold()
+        )
+
+        if should_paginate:
+            # Use pagination
+            manager = get_stream_list_manager()
+            page_streams, pagination_info = manager.get_page(streams)
+
+            # Display filter summary if filters are active
+            filter_summary = manager.get_filter_summary()
+            if filter_summary:
+                display_filter_summary(filter_summary)
+
+            # Display paginated streams
+            display_paginated_stream_list(
+                page_streams,
+                pagination_info,
+                title=title,
+                show_pagination_controls=True,
+                clear_screen_first=False
+            )
+        else:
+            # Use regular display
+            ui.display_stream_list(streams, title)
 
     def set_message(self, message: str) -> None:
         """Set a message to be displayed on the next menu display."""

@@ -147,7 +147,7 @@ class PlaybackController:
                 # --- POST-PLAYBACK HOOK ON NORMAL EXIT ---
                 player.execute_hook("post", current_stream_info, current_quality)
 
-                return "stop_playback"
+                return "player_exited"
 
             # --- Show Menu and Get User Action ---
             is_navigation_possible = len(all_live_streams_list) > 1
@@ -159,6 +159,7 @@ class PlaybackController:
             )
 
             # --- Handle User Action ---
+            # Handle all actions through the existing function
             action_result = self.handle_playback_controls(
                 action,
                 data,
@@ -215,39 +216,7 @@ class PlaybackController:
             "user_intent_direction": None,
         }
 
-        if action == "n" or action == "next":
-            if is_navigation_possible:
-                logger.info("User requested next stream.")
-                player.terminate_player_process(player_process)
-                player.execute_hook("post", current_stream_info, current_quality)
-                result["new_player_process"] = None
-                result["user_intent_direction"] = 1
-                result["new_index"] = (current_playing_index + 1) % len(
-                    all_live_streams_list
-                )
-                result["new_stream_info"] = all_live_streams_list[result["new_index"]]
-                result["new_quality"] = config.get_streamlink_quality()
-            else:
-                ui.console.print("No next stream available.", style="warning")
-                time.sleep(1)
-
-        elif action == "p" or action == "previous":
-            if is_navigation_possible:
-                logger.info("User requested previous stream.")
-                player.terminate_player_process(player_process)
-                player.execute_hook("post", current_stream_info, current_quality)
-                result["new_player_process"] = None
-                result["user_intent_direction"] = -1
-                result["new_index"] = (
-                    current_playing_index - 1 + len(all_live_streams_list)
-                ) % len(all_live_streams_list)
-                result["new_stream_info"] = all_live_streams_list[result["new_index"]]
-                result["new_quality"] = config.get_streamlink_quality()
-            else:
-                ui.console.print("No previous stream available.", style="warning")
-                time.sleep(1)
-
-        elif action == "s" or action == "stop":
+        if action == "s" or action == "stop":
             logger.info("User stopped playback.")
             result["terminate"] = True
             result["return_action"] = "stop_playback"
@@ -264,8 +233,6 @@ class PlaybackController:
             logger.info("User requested to change stream quality.")
             player.terminate_player_process(player_process)
             player.execute_hook("post", current_stream_info, current_quality)
-            result["new_player_process"] = None
-            result["user_intent_direction"] = 0
             available_qualities = player.fetch_available_qualities(
                 current_stream_info["url"]
             )
@@ -275,7 +242,10 @@ class PlaybackController:
                 )
                 if new_quality:
                     logger.info(f"User changed quality to {new_quality}.")
+                    # Set new player process to None to trigger restart with new quality
+                    result["new_player_process"] = None
                     result["new_quality"] = new_quality
+                    result["user_intent_direction"] = 0
             else:
                 logger.warning(
                     f"Could not fetch qualities for {current_stream_info['url']}"
@@ -285,6 +255,41 @@ class PlaybackController:
                     style="warning",
                 )
                 time.sleep(1.5)
+                # Continue playback with current settings
+
+        elif action == "n" or action == "next":
+            if is_navigation_possible:
+                logger.info("User requested next stream.")
+                player.terminate_player_process(player_process)
+                player.execute_hook("post", current_stream_info, current_quality)
+                # Use modulo arithmetic for circular list
+                new_index = (current_playing_index + 1) % len(all_live_streams_list)
+                new_stream_info = all_live_streams_list[new_index]
+                result["new_stream_info"] = new_stream_info
+                result["new_index"] = new_index
+                result["new_player_process"] = None
+                result["user_intent_direction"] = 1
+                result["new_quality"] = config.get_streamlink_quality()
+            else:
+                ui.console.print("No next stream available.", style="warning")
+                time.sleep(1)
+
+        elif action == "p" or action == "previous":
+            if is_navigation_possible:
+                logger.info("User requested previous stream.")
+                player.terminate_player_process(player_process)
+                player.execute_hook("post", current_stream_info, current_quality)
+                # Modulo arithmetic for circular list (works for negative numbers in Python)
+                new_index = (current_playing_index - 1 + len(all_live_streams_list)) % len(all_live_streams_list)
+                new_stream_info = all_live_streams_list[new_index]
+                result["new_stream_info"] = new_stream_info
+                result["new_index"] = new_index
+                result["new_player_process"] = None
+                result["user_intent_direction"] = -1
+                result["new_quality"] = config.get_streamlink_quality()
+            else:
+                ui.console.print("No previous stream available.", style="warning")
+                time.sleep(1)
 
         elif action == "d" or action == "donate":
             try:
@@ -296,10 +301,12 @@ class PlaybackController:
                 )
                 webbrowser.open(donation_url)
                 time.sleep(1)
+                # Continue playback - don't terminate or modify player process
             except Exception as e:
                 logger.error(f"Could not open donation link: {e}", exc_info=True)
                 ui.console.print(f"[error]Could not open donation link: {e}[/error]")
                 time.sleep(1.5)
+                # Continue playback even if donation link fails
 
         elif action == "q" or action == "quit":
             logger.info("User quit application from playback session.")

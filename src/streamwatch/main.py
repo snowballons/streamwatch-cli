@@ -86,10 +86,33 @@ def app() -> None:
 
 
 def main() -> None:
-    """Entry point for the StreamWatch CLI application."""
+
     setup_logging()
     logger = logging.getLogger(config.APP_NAME)
     logger.info("StreamWatch application started.")
+
+    # --- Automatic Migration from JSON to SQLite ---
+    try:
+        from .migration import DataMigrator
+        migrator = DataMigrator()
+        if migrator.check_migration_needed():
+            logger.info("Migration needed: starting migration from JSON to SQLite.")
+            ui.console.print("[yellow]Migrating your data to the new database format...[/yellow]")
+            result = migrator.perform_migration(create_backup=True)
+            if result.get("success"):
+                ui.console.print(f"[green]Migration completed: {result['streams_migrated']} streams, {result['config_migrated']} config values migrated.[/green]")
+                if result.get("backup_path"):
+                    ui.console.print(f"[dim]Backup created at: {result['backup_path']}[/dim]")
+            else:
+                ui.console.print(f"[red]Migration failed: {result['message']}[/red]")
+                logger.critical(f"Migration failed: {result['message']}")
+                sys.exit(1)
+        else:
+            logger.info("Migration not needed.")
+    except Exception as e:
+        logger.critical(f"Migration check/operation failed: {e}", exc_info=True)
+        ui.console.print(f"[red]Migration check/operation failed: {e}[/red]")
+        sys.exit(1)
 
     if not initial_streamlink_check():
         logger.critical("Streamlink check failed. Application cannot continue.")
@@ -106,24 +129,6 @@ def main() -> None:
         ui.console.print(
             "\nScript interrupted by user. Exiting gracefully. Goodbye!", style="info"
         )
-    except Exception as e:
-        logger.critical(
-            "An unexpected critical error occurred in the application.", exc_info=True
-        )
-        ui.clear_screen()
-        ui.console.print(
-            f"\n[error]An unexpected critical error occurred: {e}[/error]",
-            style="error",
-        )
-        ui.console.print("Please check the log file for more details.", style="dimmed")
-        ui.console.print(
-            f"Log file location: {config.USER_CONFIG_DIR / 'logs' / 'streamwatch.log'}",
-            style="dimmed",
-        )
-        sys.exit(1)
-    logger.info("StreamWatch application finished.")
-
-
 if __name__ == "__main__":
     # This allows running the script directly like: python -m stream_manager_cli.main
     # However, the primary execution method after packaging will be via the entry point.

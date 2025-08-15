@@ -59,7 +59,8 @@ def run_interactive_loop() -> None:
         if not live_streams:
             ui.console.print("No favorite streams currently live.", style="dimmed")
         else:
-            ui.display_stream_list(live_streams, title="--- Live Streams ---")
+            # Use pagination-aware display method
+            menu_handler.display_streams_with_pagination(live_streams, title="--- Live Streams ---")
 
         menu_handler.display_main_menu(len(live_streams))
         choice = menu_handler.handle_user_input()

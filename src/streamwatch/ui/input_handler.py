@@ -17,6 +17,29 @@ from .. import config
 from .display import clear_screen, format_stream_for_display
 from .styles import console, dialog_style, playback_menu_style
 
+# Import security utilities
+try:
+    from ..ui_security import (
+        sanitize_user_input, safe_format_for_display, validate_ui_command,
+        safe_format_error_message, log_user_action, check_input_rate_limit,
+        UISecurityError
+    )
+    from ..validators import ValidationError, SecurityError
+    SECURITY_AVAILABLE = True
+except ImportError:
+    SECURITY_AVAILABLE = False
+
+# Import pagination utilities
+try:
+    from .pagination import get_stream_list_manager
+    from .display import (
+        display_search_prompt, display_category_filter_prompt,
+        display_platform_filter_prompt, display_pagination_help
+    )
+    PAGINATION_AVAILABLE = True
+except ImportError:
+    PAGINATION_AVAILABLE = False
+
 # Get a logger for this module
 logger = logging.getLogger(config.APP_NAME + ".ui.input_handler")
 
@@ -24,15 +47,40 @@ logger = logging.getLogger(config.APP_NAME + ".ui.input_handler")
 def prompt_for_filepath(
     prompt_text: str = "Enter file path: ", default_filename: str = ""
 ) -> Optional[str]:
-    """Prompts the user to enter a file path."""
+    """Prompts the user to enter a file path with security validation."""
     console.print(
         "Enter the path for the file. You can use `~` for your home directory."
     )
     console.print("Press Ctrl+D or Ctrl+C to cancel.", style="dimmed")
+
     try:
         # prompt_toolkit's prompt has a `default` argument
         filepath = prompt(prompt_text, default=default_filename, style=dialog_style)
-        return str(filepath).strip() if filepath else None
+
+        if not filepath:
+            return None
+
+        filepath_str = str(filepath).strip()
+
+        # Security: Validate file path
+        if SECURITY_AVAILABLE:
+            try:
+                filepath_str = sanitize_user_input(filepath_str, "file_path", max_length=1000)
+
+                # Additional file path validation
+                from ..validators import validate_file_path
+                validated_path = validate_file_path(filepath_str, must_exist=False)
+
+                log_user_action("file_path_prompt", {"path_length": len(filepath_str)})
+
+                return str(validated_path)
+
+            except (ValidationError, SecurityError, UISecurityError) as e:
+                console.print(f"[red]Path Validation Error:[/red] {safe_format_error_message(e)}")
+                return None
+
+        return filepath_str
+
     except (EOFError, KeyboardInterrupt):
         console.print("\nOperation cancelled.", style="warning")
         return None
@@ -80,7 +128,7 @@ def select_stream_dialog(
 
 
 def prompt_add_streams() -> List[Dict[str, str]]:
-    """Prompts the user for URLs and optional aliases."""
+    """Prompts the user for URLs and optional aliases with comprehensive validation."""
     clear_screen()
     console.print("--- Add New Stream(s) ---", style="title")
     console.print(
@@ -97,20 +145,70 @@ def prompt_add_streams() -> List[Dict[str, str]]:
         if not urls_input:
             return []
 
+        # Security: Sanitize user input
+        if SECURITY_AVAILABLE:
+            try:
+                urls_input = sanitize_user_input(urls_input, "stream_input", max_length=2000)
+                log_user_action("add_streams_prompt", {"input_length": len(urls_input)})
+            except UISecurityError as e:
+                console.print(f"[red]Security Error:[/red] {safe_format_error_message(e)}")
+                return []
+
         new_streams_data = []
         # Split by comma first to handle multiple entries
         entries = urls_input.split(",")
+
         for entry in entries:
             entry = entry.strip()
             if not entry:
                 continue
 
-            parts = entry.split(maxsplit=1)  # Split only on the first space
-            url = parts[0]
-            alias = parts[1] if len(parts) > 1 else ""
-            new_streams_data.append({"url": url.strip(), "alias": alias.strip()})
+            try:
+                parts = entry.split(maxsplit=1)  # Split only on the first space
+                url = parts[0].strip()
+                alias = parts[1].strip() if len(parts) > 1 else ""
+
+                # Validate URL and alias if security is available
+                if SECURITY_AVAILABLE:
+                    # Import validation functions
+                    from ..validators import validate_url, validate_alias
+
+                    try:
+                        # Validate URL
+                        is_valid, sanitized_url, metadata = validate_url(url, strict=False)
+
+                        # Use extracted username as alias if no alias provided
+                        if not alias and metadata.get('username') != 'unknown_stream':
+                            alias = f"{metadata['platform']} - {metadata['username']}"
+
+                        # Validate alias if provided
+                        if alias:
+                            alias = validate_alias(alias)
+
+                        new_streams_data.append({
+                            "url": sanitized_url,
+                            "alias": alias,
+                            "platform": metadata.get('platform', 'Unknown'),
+                            "username": metadata.get('username', 'unknown_stream')
+                        })
+
+                    except (ValidationError, SecurityError) as e:
+                        console.print(f"[red]Validation Error for '{url}':[/red] {safe_format_error_message(e)}")
+                        console.print("Skipping this entry. Please check the URL format.")
+                        continue
+                else:
+                    # Fallback without validation
+                    new_streams_data.append({"url": url, "alias": alias})
+
+            except Exception as e:
+                console.print(f"[red]Error processing entry '{entry}':[/red] {str(e)}")
+                continue
+
+        if SECURITY_AVAILABLE:
+            log_user_action("add_streams_completed", {"streams_added": len(new_streams_data)})
 
         return new_streams_data
+
     except (EOFError, KeyboardInterrupt):
         console.print("\nAdd operation cancelled.", style="warning")
         return []
@@ -181,16 +279,233 @@ def prompt_remove_streams_dialog(
 
 
 def prompt_main_menu_action() -> str:
-    """Gets user input for main menu actions."""
+    """Gets user input for main menu actions with validation."""
     try:
-        choice = (
-            input("Enter choice (or press Enter to select stream if live): ")
-            .strip()
-            .lower()
-        )
+        choice = input("Enter choice (or press Enter to select stream if live): ").strip().lower()
+
+        # Security: Validate command input
+        if SECURITY_AVAILABLE and choice:
+            try:
+                # Define allowed main menu commands
+                allowed_commands = [
+                    "a", "add", "r", "remove", "e", "export", "i", "import",
+                    "c", "check", "s", "settings", "h", "help", "q", "quit",
+                    "1", "2", "3", "4", "5", "6", "7", "8", "9", "0",  # Stream selection numbers
+                    # Pagination commands
+                    "n", "next", "p", "prev", "f", "first", "l", "last",
+                    "search", "cf", "pf", "clear"
+                ]
+
+                # Allow empty choice (default action)
+                if choice == "":
+                    return choice
+
+                # Check if it's a number (stream selection)
+                if choice.isdigit():
+                    return choice
+
+                # Validate against allowed commands
+                validated_choice = validate_ui_command(choice, allowed_commands)
+                log_user_action("main_menu_action", {"command": validated_choice})
+
+                return validated_choice
+
+            except UISecurityError as e:
+                console.print(f"[red]Invalid command:[/red] {safe_format_error_message(e)}")
+                return ""  # Return empty to show menu again
+
         return choice
+
     except (EOFError, KeyboardInterrupt):
         return "q"
+
+
+def prompt_search_term() -> Optional[str]:
+    """
+    Prompt user for search term with validation.
+
+    Returns:
+        Search term or None if cancelled
+    """
+    if not PAGINATION_AVAILABLE:
+        return None
+
+    try:
+        display_search_prompt()
+        search_term = prompt("Search term: ", style=dialog_style)
+
+        if search_term is None:
+            return None
+
+        search_term = search_term.strip()
+
+        # Security: Validate search input
+        if SECURITY_AVAILABLE and search_term:
+            try:
+                search_term = sanitize_user_input(search_term, "search_term", max_length=100)
+                log_user_action("search_streams", {"term_length": len(search_term)})
+            except UISecurityError as e:
+                console.print(f"[red]Invalid search term:[/red] {safe_format_error_message(e)}")
+                return None
+
+        return search_term if search_term else ""
+
+    except (EOFError, KeyboardInterrupt):
+        console.print("\nSearch cancelled.", style="warning")
+        return None
+
+
+def prompt_category_filter(available_categories: List[str]) -> Optional[str]:
+    """
+    Prompt user for category filter with validation.
+
+    Args:
+        available_categories: List of available categories
+
+    Returns:
+        Category filter or None if cancelled
+    """
+    if not PAGINATION_AVAILABLE:
+        return None
+
+    try:
+        display_category_filter_prompt(available_categories)
+        category = prompt("Category filter: ", style=dialog_style)
+
+        if category is None:
+            return None
+
+        category = category.strip()
+
+        # Security: Validate category input
+        if SECURITY_AVAILABLE and category:
+            try:
+                category = sanitize_user_input(category, "category_filter", max_length=100)
+                log_user_action("filter_by_category", {"category": category})
+            except UISecurityError as e:
+                console.print(f"[red]Invalid category:[/red] {safe_format_error_message(e)}")
+                return None
+
+        return category if category else ""
+
+    except (EOFError, KeyboardInterrupt):
+        console.print("\nCategory filter cancelled.", style="warning")
+        return None
+
+
+def prompt_platform_filter(available_platforms: List[str]) -> Optional[str]:
+    """
+    Prompt user for platform filter with validation.
+
+    Args:
+        available_platforms: List of available platforms
+
+    Returns:
+        Platform filter or None if cancelled
+    """
+    if not PAGINATION_AVAILABLE:
+        return None
+
+    try:
+        display_platform_filter_prompt(available_platforms)
+        platform = prompt("Platform filter: ", style=dialog_style)
+
+        if platform is None:
+            return None
+
+        platform = platform.strip()
+
+        # Security: Validate platform input
+        if SECURITY_AVAILABLE and platform:
+            try:
+                platform = sanitize_user_input(platform, "platform_filter", max_length=50)
+                log_user_action("filter_by_platform", {"platform": platform})
+            except UISecurityError as e:
+                console.print(f"[red]Invalid platform:[/red] {safe_format_error_message(e)}")
+                return None
+
+        return platform if platform else ""
+
+    except (EOFError, KeyboardInterrupt):
+        console.print("\nPlatform filter cancelled.", style="warning")
+        return None
+
+
+def handle_pagination_command(command: str, streams: List[Dict[str, Any]]) -> bool:
+    """
+    Handle pagination-specific commands.
+
+    Args:
+        command: The pagination command to handle
+        streams: List of all streams for context
+
+    Returns:
+        True if command was handled, False otherwise
+    """
+    if not PAGINATION_AVAILABLE:
+        return False
+
+    manager = get_stream_list_manager()
+
+    if command in ["n", "next"]:
+        manager.next_page(streams)
+        return True
+
+    elif command in ["p", "prev"]:
+        manager.previous_page(streams)
+        return True
+
+    elif command in ["f", "first"]:
+        manager.first_page(streams)
+        return True
+
+    elif command in ["l", "last"]:
+        manager.last_page(streams)
+        return True
+
+    elif command in ["s", "search"]:
+        search_term = prompt_search_term()
+        if search_term is not None:
+            manager.set_search_filter(search_term)
+            if search_term:
+                console.print(f"Search filter set to: '{search_term}'", style="info")
+            else:
+                console.print("Search filter cleared", style="info")
+        return True
+
+    elif command == "cf":
+        available_categories = manager.get_available_categories(streams)
+        category = prompt_category_filter(available_categories)
+        if category is not None:
+            manager.set_category_filter(category)
+            if category:
+                console.print(f"Category filter set to: '{category}'", style="info")
+            else:
+                console.print("Category filter cleared", style="info")
+        return True
+
+    elif command == "pf":
+        available_platforms = manager.get_available_platforms(streams)
+        platform = prompt_platform_filter(available_platforms)
+        if platform is not None:
+            manager.set_platform_filter(platform)
+            if platform:
+                console.print(f"Platform filter set to: '{platform}'", style="info")
+            else:
+                console.print("Platform filter cleared", style="info")
+        return True
+
+    elif command == "clear":
+        manager.clear_filters()
+        console.print("All filters cleared", style="info")
+        return True
+
+    elif command in ["h", "help"]:
+        display_pagination_help()
+        input("Press Enter to continue...")
+        return True
+
+    return False
 
 
 def show_playback_menu(
@@ -270,7 +585,7 @@ def select_quality_dialog(
     choices = []
     default_selection = None
     for i, quality in enumerate(
-        sorted(available_qualities, key=lambda q: (q != "best", q != "worst", q))
+        sorted(available_qualities, key=lambda q: (q != "best", q != "worst", q)) # Sort, with best/worst prioritized
     ):  # Sort, with best/worst prioritized
         # The value to return is the quality string itself.
         display_text = f"[{i+1}] {quality}"

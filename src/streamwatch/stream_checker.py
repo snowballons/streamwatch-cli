@@ -7,11 +7,13 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import Any, Dict, List, Optional, Tuple, Union
 
 from . import config
+from .cache import get_cache
 from .exceptions import (
     StreamlinkError, StreamNotFoundError, NetworkError,
-    AuthenticationError, TimeoutError, categorize_streamlink_error
+    AuthenticationError, TimeoutError, RateLimitExceededError, categorize_streamlink_error
 )
 from .models import StreamInfo, StreamMetadata, StreamStatus
+from .rate_limiter import get_rate_limiter
 from .resilience import (
     RetryConfig, CircuitBreakerConfig, resilient_operation,
     get_circuit_breaker, CircuitBreakerOpenError
@@ -192,8 +194,8 @@ def _is_stream_live_core(url: str) -> StreamCheckResult:
 
 def is_stream_live_for_check_detailed(url: str) -> StreamCheckResult:
     """
-    Checks if a given stream URL is currently live using streamlink with detailed error information
-    and resilience patterns (retry logic and circuit breaker).
+    Checks if a given stream URL is currently live using streamlink with detailed error information,
+    resilience patterns (retry logic and circuit breaker), caching, and rate limiting.
 
     Args:
         url: The stream URL to check
@@ -201,44 +203,90 @@ def is_stream_live_for_check_detailed(url: str) -> StreamCheckResult:
     Returns:
         StreamCheckResult: Detailed result with error categorization
     """
+    # Check cache first if caching is enabled
+    if config.get_cache_enabled():
+        cache = get_cache()
+        cached_status = cache.get(url)
+        if cached_status is not None:
+            logger.debug(f"Using cached status for {url}: {cached_status.value}")
+            # Convert cached status to StreamCheckResult
+            is_live = cached_status == StreamStatus.LIVE
+            return StreamCheckResult(is_live=is_live, url=url)
+
+    # Apply rate limiting before making streamlink call
+    if config.get_rate_limit_enabled():
+        rate_limiter = get_rate_limiter()
+        timeout = config.get_streamlink_timeout_liveness()  # Use streamlink timeout as rate limit timeout
+
+        if not rate_limiter.acquire(url, timeout=timeout):
+            # Rate limit exceeded
+            from .stream_utils import parse_url_metadata
+            platform = parse_url_metadata(url).get("platform", "Unknown")
+            error = RateLimitExceededError(
+                f"Rate limit exceeded for {platform}",
+                url=url,
+                platform=platform
+            )
+            logger.warning(f"Rate limit exceeded for {url}")
+            return StreamCheckResult(is_live=False, url=url, error=error)
+
+    # Cache miss or caching disabled - perform actual check
     if not config.get_circuit_breaker_enabled():
         # If resilience is disabled, use the core function directly
-        return _is_stream_live_core(url)
+        result = _is_stream_live_core(url)
+    else:
+        try:
+            # Use resilient operation with retry and circuit breaker
+            @resilient_operation(
+                operation_name=f"stream_liveness_check_{url}",
+                retry_config=_get_retry_config(),
+                circuit_breaker_config=_get_circuit_breaker_config(),
+                use_circuit_breaker=True
+            )
+            def resilient_check():
+                result = _is_stream_live_core(url)
+                # If the result indicates an error that should trigger circuit breaker,
+                # raise the exception to be handled by resilience patterns
+                if result.error and isinstance(result.error, (NetworkError, TimeoutError)):
+                    raise result.error
+                return result
 
-    try:
-        # Use resilient operation with retry and circuit breaker
-        @resilient_operation(
-            operation_name=f"stream_liveness_check_{url}",
-            retry_config=_get_retry_config(),
-            circuit_breaker_config=_get_circuit_breaker_config(),
-            use_circuit_breaker=True
-        )
-        def resilient_check():
-            result = _is_stream_live_core(url)
-            # If the result indicates an error that should trigger circuit breaker,
-            # raise the exception to be handled by resilience patterns
-            if result.error and isinstance(result.error, (NetworkError, TimeoutError)):
-                raise result.error
-            return result
+            result = resilient_check()
 
-        return resilient_check()
+        except CircuitBreakerOpenError as e:
+            # Circuit breaker is open - return a specific error
+            error = NetworkError(
+                f"Circuit breaker open for stream checks: {str(e)}",
+                url=url
+            )
+            logger.warning(f"Circuit breaker open for stream liveness check: {url}")
+            result = StreamCheckResult(is_live=False, url=url, error=error)
 
-    except CircuitBreakerOpenError as e:
-        # Circuit breaker is open - return a specific error
-        error = NetworkError(
-            f"Circuit breaker open for stream checks: {str(e)}",
-            url=url
-        )
-        logger.warning(f"Circuit breaker open for stream liveness check: {url}")
-        return StreamCheckResult(is_live=False, url=url, error=error)
+        except Exception as e:
+            # Handle any other exceptions from resilience patterns
+            if isinstance(e, StreamlinkError):
+                result = StreamCheckResult(is_live=False, url=url, error=e)
+            else:
+                error = StreamlinkError(f"Resilience pattern error: {str(e)}", url=url)
+                result = StreamCheckResult(is_live=False, url=url, error=error)
 
-    except Exception as e:
-        # Handle any other exceptions from resilience patterns
-        if isinstance(e, StreamlinkError):
-            return StreamCheckResult(is_live=False, url=url, error=e)
+    # Update cache with the result if caching is enabled
+    if config.get_cache_enabled():
+        cache = get_cache()
+        # Determine status to cache based on result
+        if result.is_live:
+            status = StreamStatus.LIVE
+        elif result.error and isinstance(result.error, StreamNotFoundError):
+            status = StreamStatus.OFFLINE
+        elif result.error:
+            status = StreamStatus.ERROR
         else:
-            error = StreamlinkError(f"Resilience pattern error: {str(e)}", url=url)
-            return StreamCheckResult(is_live=False, url=url, error=error)
+            status = StreamStatus.OFFLINE
+
+        cache.put(url, status)
+        logger.debug(f"Cached status for {url}: {status.value}")
+
+    return result
 
 
 def get_stream_metadata_json(url: str) -> Tuple[bool, str]:
@@ -342,8 +390,8 @@ def _get_stream_metadata_core(url: str) -> 'MetadataResult':
 
 def get_stream_metadata_json_detailed(url: str) -> 'MetadataResult':
     """
-    Fetches stream metadata using streamlink --json with detailed error information
-    and resilience patterns (retry logic and circuit breaker).
+    Fetches stream metadata using streamlink --json with detailed error information,
+    resilience patterns (retry logic and circuit breaker), and rate limiting.
 
     Args:
         url: The stream URL to get metadata for
@@ -351,6 +399,23 @@ def get_stream_metadata_json_detailed(url: str) -> 'MetadataResult':
     Returns:
         MetadataResult: Detailed result with error categorization
     """
+    # Apply rate limiting before making streamlink call
+    if config.get_rate_limit_enabled():
+        rate_limiter = get_rate_limiter()
+        timeout = config.get_streamlink_timeout_metadata()  # Use metadata timeout as rate limit timeout
+
+        if not rate_limiter.acquire(url, timeout=timeout):
+            # Rate limit exceeded
+            from .stream_utils import parse_url_metadata
+            platform = parse_url_metadata(url).get("platform", "Unknown")
+            error = RateLimitExceededError(
+                f"Rate limit exceeded for {platform} metadata fetch",
+                url=url,
+                platform=platform
+            )
+            logger.warning(f"Rate limit exceeded for metadata fetch: {url}")
+            return MetadataResult(success=False, url=url, error=error)
+
     if not config.get_circuit_breaker_enabled():
         # If resilience is disabled, use the core function directly
         return _get_stream_metadata_core(url)
@@ -722,3 +787,158 @@ def fetch_live_streams(
             ordered_final_streams.append(url_to_details_map[url])
 
     return ordered_final_streams
+
+
+# --- Cache Management Functions ---
+
+def clear_stream_cache() -> int:
+    """
+    Clear all cached stream status entries.
+
+    Returns:
+        Number of entries cleared
+    """
+    if not config.get_cache_enabled():
+        logger.info("Cache is disabled, nothing to clear")
+        return 0
+
+    cache = get_cache()
+    count = cache.clear()
+    logger.info(f"Cleared {count} cached stream status entries")
+    return count
+
+
+def invalidate_stream_cache(url: str) -> bool:
+    """
+    Invalidate cache entry for a specific stream URL.
+
+    Args:
+        url: The stream URL to invalidate
+
+    Returns:
+        True if entry was removed, False if not found
+    """
+    if not config.get_cache_enabled():
+        logger.debug("Cache is disabled, nothing to invalidate")
+        return False
+
+    cache = get_cache()
+    result = cache.invalidate(url)
+    if result:
+        logger.debug(f"Invalidated cache entry for: {url}")
+    return result
+
+
+def cleanup_expired_cache() -> int:
+    """
+    Remove expired entries from the stream cache.
+
+    Returns:
+        Number of expired entries removed
+    """
+    if not config.get_cache_enabled():
+        return 0
+
+    cache = get_cache()
+    count = cache.cleanup_expired()
+    if count > 0:
+        logger.debug(f"Cleaned up {count} expired cache entries")
+    return count
+
+
+def get_cache_stats() -> Dict[str, int]:
+    """
+    Get cache statistics.
+
+    Returns:
+        Dictionary with cache statistics
+    """
+    if not config.get_cache_enabled():
+        return {"total_entries": 0, "active_entries": 0, "expired_entries": 0}
+
+    cache = get_cache()
+    return cache.get_stats()
+
+
+# --- Rate Limiting Management Functions ---
+
+def get_rate_limit_status() -> Dict[str, Dict[str, float]]:
+    """
+    Get rate limiting status for all platforms.
+
+    Returns:
+        Dictionary with rate limiting status for global and platform limiters
+    """
+    if not config.get_rate_limit_enabled():
+        return {}
+
+    rate_limiter = get_rate_limiter()
+    return rate_limiter.get_status()
+
+
+def check_rate_limit_available(url: str) -> bool:
+    """
+    Check if a request can proceed immediately without rate limiting.
+
+    Args:
+        url: The stream URL to check
+
+    Returns:
+        True if request can proceed immediately, False if rate limited
+    """
+    if not config.get_rate_limit_enabled():
+        return True
+
+    rate_limiter = get_rate_limiter()
+    return rate_limiter.try_acquire(url)
+
+
+def reset_rate_limiters() -> None:
+    """
+    Reset all rate limiters (mainly for testing and debugging).
+    """
+    from .rate_limiter import reset_rate_limiter
+    reset_rate_limiter()
+    logger.info("Reset all rate limiters")
+
+
+def get_rate_limit_status_message() -> str:
+    """
+    Get a human-readable rate limit status message for UI display.
+
+    Returns:
+        String describing current rate limit status
+    """
+    if not config.get_rate_limit_enabled():
+        return ""
+
+    try:
+        status = get_rate_limit_status()
+        if not status:
+            return ""
+
+        messages = []
+
+        # Global status
+        if "global" in status:
+            global_status = status["global"]
+            utilization = global_status["utilization"]
+            if utilization > 0.7:  # High utilization
+                messages.append(f"Rate limiting active (Global: {utilization:.0%} used)")
+
+        # Platform status - only show if heavily utilized
+        for platform, platform_status in status.items():
+            if platform == "global":
+                continue
+            utilization = platform_status["utilization"]
+            if utilization > 0.8:  # Very high utilization
+                messages.append(f"{platform.title()}: {utilization:.0%} rate limit used")
+
+        if messages:
+            return "⏳ " + ", ".join(messages)
+
+        return ""
+
+    except Exception as e:
+        logger.debug(f"Error getting rate limit status message: {e}")
+        return ""

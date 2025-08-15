@@ -33,10 +33,40 @@ DEFAULT_CONFIG: Dict[str, Dict[str, str]] = {
         "circuit_breaker_success_threshold": "2",  # Successes needed to close circuit
         "circuit_breaker_enabled": "true",  # Enable circuit breaker pattern
     },
+    "Cache": {
+        "enabled": "true",  # Enable/disable caching
+        "ttl_seconds": "300",  # Cache TTL in seconds (5 minutes)
+        "auto_cleanup": "true",  # Automatically clean up expired entries
+        "cleanup_interval": "600",  # Cleanup interval in seconds (10 minutes)
+    },
+    "RateLimit": {
+        "enabled": "true",  # Enable/disable rate limiting
+        "global_requests_per_second": "8.0",  # Global rate limit (requests per second)
+        "global_burst_capacity": "15",  # Global burst capacity
+        # Platform-specific rate limits
+        "twitch_requests_per_second": "3.0",  # Twitch rate limit
+        "twitch_burst_capacity": "8",  # Twitch burst capacity
+        "youtube_requests_per_second": "2.0",  # YouTube rate limit
+        "youtube_burst_capacity": "6",  # YouTube burst capacity
+        "kick_requests_per_second": "4.0",  # Kick rate limit
+        "kick_burst_capacity": "10",  # Kick burst capacity
+        "default_requests_per_second": "2.0",  # Default platform rate limit
+        "default_burst_capacity": "5",  # Default platform burst capacity
+    },
     "Interface": {
         # Color settings could go here later
         # 'color_live': 'green',
         # 'color_username': 'cyan',
+        "refresh_interval": "2.0",
+        "show_offline_streams": "false",
+        "streams_per_page": "20",
+        "enable_search": "true",
+        "enable_category_filter": "true",
+        "enable_platform_filter": "true",
+    },
+    "Memory": {
+        "metadata_cache_size": "100",
+        "lazy_load_threshold": "50",
     },
     "Misc": {
         "donation_link": "https://buymeacoffee.com/snowballons",  # Your actual link
@@ -328,6 +358,82 @@ def set_last_played_url(url: Optional[str]) -> None:
         logger.error(f"Could not update config file for last_played_url: {e}")
 
 
+# --- Cache Configuration Accessor Functions ---
+def get_cache_enabled() -> bool:
+    """Get whether caching is enabled."""
+    return config_parser.getboolean(
+        "Cache", "enabled", fallback=DEFAULT_CONFIG["Cache"]["enabled"] == "true"
+    )
+
+
+def get_cache_ttl_seconds() -> int:
+    """Get the cache TTL in seconds."""
+    return config_parser.getint(
+        "Cache", "ttl_seconds", fallback=int(DEFAULT_CONFIG["Cache"]["ttl_seconds"])
+    )
+
+
+def get_cache_auto_cleanup() -> bool:
+    """Get whether automatic cache cleanup is enabled."""
+    return config_parser.getboolean(
+        "Cache", "auto_cleanup", fallback=DEFAULT_CONFIG["Cache"]["auto_cleanup"] == "true"
+    )
+
+
+def get_cache_cleanup_interval() -> int:
+    """Get the cache cleanup interval in seconds."""
+    return config_parser.getint(
+        "Cache", "cleanup_interval", fallback=int(DEFAULT_CONFIG["Cache"]["cleanup_interval"])
+    )
+
+
+# --- Rate Limiting Configuration Accessor Functions ---
+def get_rate_limit_enabled() -> bool:
+    """Get whether rate limiting is enabled."""
+    return config_parser.getboolean(
+        "RateLimit", "enabled", fallback=DEFAULT_CONFIG["RateLimit"]["enabled"] == "true"
+    )
+
+
+def get_rate_limit_global_requests_per_second() -> float:
+    """Get the global rate limit in requests per second."""
+    return config_parser.getfloat(
+        "RateLimit", "global_requests_per_second",
+        fallback=float(DEFAULT_CONFIG["RateLimit"]["global_requests_per_second"])
+    )
+
+
+def get_rate_limit_global_burst_capacity() -> int:
+    """Get the global burst capacity."""
+    return config_parser.getint(
+        "RateLimit", "global_burst_capacity",
+        fallback=int(DEFAULT_CONFIG["RateLimit"]["global_burst_capacity"])
+    )
+
+
+def get_rate_limit_platform_configs() -> Dict[str, Dict[str, float]]:
+    """Get platform-specific rate limit configurations."""
+    platforms = ["twitch", "youtube", "kick", "default"]
+    configs = {}
+
+    for platform in platforms:
+        rps_key = f"{platform}_requests_per_second"
+        burst_key = f"{platform}_burst_capacity"
+
+        configs[platform] = {
+            "requests_per_second": config_parser.getfloat(
+                "RateLimit", rps_key,
+                fallback=float(DEFAULT_CONFIG["RateLimit"][rps_key])
+            ),
+            "burst_capacity": config_parser.getint(
+                "RateLimit", burst_key,
+                fallback=int(DEFAULT_CONFIG["RateLimit"][burst_key])
+            )
+        }
+
+    return configs
+
+
 # --- NEW Accessor Functions for Hooks ---
 def get_pre_playback_hook() -> str:
     """Get the pre-playback hook script path."""
@@ -337,6 +443,50 @@ def get_pre_playback_hook() -> str:
 def get_post_playback_hook() -> str:
     """Get the post-playback hook script path."""
     return config_parser.get("Misc", "post_playback_hook", fallback="")
+
+
+# --- Pagination and UI Configuration ---
+
+def get_streams_per_page() -> int:
+    """Get the number of streams to display per page."""
+    return config_parser.getint("Interface", "streams_per_page", fallback=20)
+
+
+def get_enable_search() -> bool:
+    """Get whether search functionality is enabled."""
+    return config_parser.getboolean("Interface", "enable_search", fallback=True)
+
+
+def get_enable_category_filter() -> bool:
+    """Get whether category filtering is enabled."""
+    return config_parser.getboolean("Interface", "enable_category_filter", fallback=True)
+
+
+def get_enable_platform_filter() -> bool:
+    """Get whether platform filtering is enabled."""
+    return config_parser.getboolean("Interface", "enable_platform_filter", fallback=True)
+
+
+def get_refresh_interval() -> float:
+    """Get the UI refresh interval in seconds."""
+    return config_parser.getfloat("Interface", "refresh_interval", fallback=2.0)
+
+
+def get_show_offline_streams() -> bool:
+    """Get whether to show offline streams in UI."""
+    return config_parser.getboolean("Interface", "show_offline_streams", fallback=False)
+
+
+# --- Memory Optimization Configuration ---
+
+def get_metadata_cache_size() -> int:
+    """Get the maximum number of cached stream metadata entries."""
+    return config_parser.getint("Memory", "metadata_cache_size", fallback=100)
+
+
+def get_lazy_load_threshold() -> int:
+    """Get the stream count threshold for enabling lazy loading."""
+    return config_parser.getint("Memory", "lazy_load_threshold", fallback=50)
 
 
 # --- Load config when module is imported ---
