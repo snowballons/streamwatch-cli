@@ -1,3 +1,5 @@
+import json
+from ..models import StreamMetadata
 """
 Pagination and lazy loading utilities for StreamWatch UI.
 
@@ -351,26 +353,38 @@ class LazyStreamLoader:
         self.cache_size = cache_size or config.get_metadata_cache_size()
         logger.debug(f"LazyStreamLoader initialized with cache_size={self.cache_size}")
 
-    @lru_cache(maxsize=None)  # Will be dynamically set
-    def get_stream_details(self, stream_url: str, loader_func: Callable[[str], Optional[StreamInfo]]) -> Optional[StreamInfo]:
+
+    from .. import stream_checker  # Needed for get_stream_metadata_json_detailed
+
+    @lru_cache(maxsize=None)
+    def get_details(self, stream: StreamInfo) -> StreamInfo:
         """
-        Get detailed stream information with LRU caching.
-        
-        Args:
-            stream_url: URL of the stream
-            loader_func: Function to load stream details
-            
-        Returns:
-            StreamInfo object or None if loading failed
+        Lazily fetches and caches detailed metadata for a single stream.
+        This method is the core of the lazy loading mechanism.
         """
+        # Set the cache size dynamically from config
+        self.get_details.cache_info.maxsize = self.cache_size
+        logger.debug(f"Lazily fetching details for {stream.url}")
+        metadata_result = self.stream_checker.get_stream_metadata_json_detailed(stream.url)
+
+        if not metadata_result.success or not metadata_result.json_data:
+            return stream  # Return original object on failure
+
         try:
-            details = loader_func(stream_url)
-            if details:
-                logger.debug(f"Loaded details for stream: {stream_url}")
-            return details
-        except Exception as e:
-            logger.warning(f"Failed to load details for stream {stream_url}: {e}")
-            return None
+            metadata_json = json.loads(metadata_result.json_data)
+            stream_metadata = StreamMetadata.from_json(metadata_json)
+
+            # Create a new StreamInfo object with the updated details
+            updated_stream = stream.model_copy(update={
+                'category': stream_metadata.category or stream.category,
+                'viewer_count': stream_metadata.viewer_count,
+                'username': stream_metadata.author or stream.username
+            })
+            return updated_stream
+
+        except (json.JSONDecodeError, TypeError) as e:
+            logger.warning(f"Failed to decode or parse metadata for {stream.url}: {e}")
+            return stream # Return original on parsing failure
 
     def clear_cache(self) -> None:
         """Clear the LRU cache."""

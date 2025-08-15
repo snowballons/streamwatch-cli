@@ -7,7 +7,7 @@ undo functionality, and command queuing.
 """
 
 # Import base classes
-from .base import Command, CommandResult, UndoableCommand
+from .base import Command, CommandResult
 
 # Import command invoker
 from .invoker import CommandInvoker
@@ -33,7 +33,6 @@ __all__ = [
     # Base classes
     "Command",
     "CommandResult",
-    "UndoableCommand",
     # Command invoker
     "CommandInvoker",
     # Stream commands

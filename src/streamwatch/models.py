@@ -103,6 +103,7 @@ class StreamInfo(BaseModel):
     """Complete information about a stream with comprehensive validation."""
 
     model_config = ConfigDict(
+        frozen=True,  # <-- ADD THIS LINE
         str_strip_whitespace=True,
         validate_assignment=True,
         extra='forbid',

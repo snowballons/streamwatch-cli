@@ -137,17 +137,6 @@ class PlaybackController:
 
                     continue
 
-            # --- Check Player Status ---
-            if player_process and player_process.poll() is not None:
-                logger.info("Player process has exited.")
-                ui.console.print("\nPlayer has exited.", style="info")
-                player.terminate_player_process(player_process)
-                player_process = None
-
-                # --- POST-PLAYBACK HOOK ON NORMAL EXIT ---
-                player.execute_hook("post", current_stream_info, current_quality)
-
-                return "player_exited"
 
             # --- Show Menu and Get User Action ---
             is_navigation_possible = len(all_live_streams_list) > 1
@@ -171,13 +160,16 @@ class PlaybackController:
                 player_process,
             )
 
-            if action_result["terminate"]:
+            # --- Handle State Updates and Termination ---
+
+            # Check if the current stream needs to be stopped for the next action
+            if action in ["s", "stop", "n", "next", "p", "previous", "c", "change_quality"]:
                 if player_process:
                     player.terminate_player_process(player_process)
                     player.execute_hook("post", current_stream_info, current_quality)
-                return action_result["return_action"]
+                player_process = None  # Invalidate the process variable immediately
 
-            # Update state based on action result
+            # Update state from the action result
             if action_result.get("new_stream_info"):
                 current_stream_info = action_result["new_stream_info"]
             if action_result.get("new_quality"):
@@ -188,6 +180,18 @@ class PlaybackController:
                 player_process = action_result["new_player_process"]
             if action_result.get("user_intent_direction") is not None:
                 user_intent_direction = action_result["user_intent_direction"]
+
+            # If the action was 'donate', simply continue the loop without changing state
+            if action == "d" or action == "donate":
+                time.sleep(0.1)  # Small pause to prevent rapid looping
+                continue
+
+            # Handle actions that should end the entire playback session
+            if action_result["terminate"]:
+                if player_process: # Ensure player is stopped before exiting
+                    player.terminate_player_process(player_process)
+                    player.execute_hook("post", current_stream_info, current_quality)
+                return action_result["return_action"]
 
     def handle_playback_controls(
         self,
@@ -216,10 +220,9 @@ class PlaybackController:
             "user_intent_direction": None,
         }
 
-        if action == "s" or action == "stop":
-            logger.info("User stopped playback.")
-            result["terminate"] = True
-            result["return_action"] = "stop_playback"
+        if action == "s" or action == "stop":  # 'stop' now means 'replay'
+            logger.info("User requested to replay the current stream.")
+            result["new_player_process"] = None  # This signals the main loop to re-launch
 
         elif action == "m" or action == "main_menu":
             logger.info("User returned to main menu from playback.")
@@ -231,8 +234,6 @@ class PlaybackController:
 
         elif action == "c" or action == "change_quality":
             logger.info("User requested to change stream quality.")
-            player.terminate_player_process(player_process)
-            player.execute_hook("post", current_stream_info, current_quality)
             available_qualities = player.fetch_available_qualities(
                 current_stream_info["url"]
             )
@@ -260,8 +261,6 @@ class PlaybackController:
         elif action == "n" or action == "next":
             if is_navigation_possible:
                 logger.info("User requested next stream.")
-                player.terminate_player_process(player_process)
-                player.execute_hook("post", current_stream_info, current_quality)
                 # Use modulo arithmetic for circular list
                 new_index = (current_playing_index + 1) % len(all_live_streams_list)
                 new_stream_info = all_live_streams_list[new_index]
@@ -277,8 +276,6 @@ class PlaybackController:
         elif action == "p" or action == "previous":
             if is_navigation_possible:
                 logger.info("User requested previous stream.")
-                player.terminate_player_process(player_process)
-                player.execute_hook("post", current_stream_info, current_quality)
                 # Modulo arithmetic for circular list (works for negative numbers in Python)
                 new_index = (current_playing_index - 1 + len(all_live_streams_list)) % len(all_live_streams_list)
                 new_stream_info = all_live_streams_list[new_index]
@@ -313,7 +310,19 @@ class PlaybackController:
             result["terminate"] = True
             result["return_action"] = "quit_application"
 
-        else:
+            # If no user action was taken, check if the player is still running.
+            # This is the correct place to detect an unexpected exit.
+            if player_process and player_process.poll() is not None:
+                logger.warning("Player process has exited unexpectedly.")
+                ui.console.print("\n[warning]Player exited unexpectedly.[/warning]", style="warning")
+                player.terminate_player_process(player_process) # Ensure cleanup
+                player_process = None
+
+                player.execute_hook("post", current_stream_info, current_quality)
+
+                # We return to the main menu instead of stopping completely.
+                return "return_to_main"
+            # If player is running and no action was taken, just pause briefly.
             time.sleep(0.1)
 
         return result

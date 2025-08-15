@@ -187,9 +187,18 @@ class ServiceRegistry:
             lambda: CommandInvoker()
         )
         
+        from .database import get_database
+
+        # Register the database as a singleton
+        container.register_singleton(
+            "database",
+            lambda: get_database()
+        )
+
+        # Register StreamManager and inject the database
         container.register_singleton(
             "stream_manager", 
-            lambda: StreamManager()
+            lambda: StreamManager(database=container.get("database"))
         )
         
         container.register_singleton(

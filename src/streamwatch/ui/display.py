@@ -69,10 +69,10 @@ def display_main_menu(live_streams_count: int) -> None:
 
     # --- NEW MENU OPTIONS ---
     text.append("  [", style="dimmed").append("I", style="menu_key").append(
-        "]      - Import streams from .txt file\n", style="menu_option"
+        "]      - Import streams from a .txt file\n", style="menu_option"
     )
     text.append("  [", style="dimmed").append("E", style="menu_key").append(
-        "]      - Export streams to .json file\n", style="menu_option"
+        "]      - Export streams to a .json backup\n", style="menu_option"
     )
     # --- END NEW ---
 

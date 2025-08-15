@@ -1,3 +1,5 @@
+import json
+from .models import StreamInfo, StreamMetadata, StreamStatus
 import json  # For parsing --json output
 import logging  # Import logging
 import re
@@ -634,159 +636,22 @@ def fetch_live_streams(
         logger.info("No streams appear to be live based on initial check.")
         return []
 
-    logger.info(
-        f"Found {len(live_stream_candidates)} potentially live stream(s). Fetching details..."
-    )
+    logger.info(f"Found {len(live_stream_candidates)} potentially live stream(s).")
 
-    # Phase 2: Fetch detailed metadata for live candidates
-    detailed_live_streams = []
-    with ThreadPoolExecutor(max_workers=config.get_max_workers_metadata()) as executor:
-        future_to_meta_task = {}
-        for url in live_stream_candidates:
-            parsed_initial_info = parse_url_metadata(url)
-            future = executor.submit(get_stream_metadata_json, url)
-            future_to_meta_task[future] = {
-                "url": url,
-                "initial_platform": parsed_initial_info["platform"],
-                "initial_username": parsed_initial_info["username"],
-                "url_type": parsed_initial_info.get("type", "unknown"),
-            }
-
-        for future in as_completed(future_to_meta_task):
-            task_info = future_to_meta_task[future]
-            url, initial_platform, initial_username, url_type = (
-                task_info["url"],
-                task_info["initial_platform"],
-                task_info["initial_username"],
-                task_info["url_type"],
-            )
-
-            final_username = initial_username
-            final_platform = (
-                initial_platform  # Usually doesn't change from initial parse
-            )
-            category = "N/A (no details)"
-
-            try:
-                metadata_result = future.result()
-                success, json_data = metadata_result
-
-                # --- NEW: Viewer Count Extraction ---
-                viewer_count = None  # Default to None
-                metadata_json = None
-                meta = None
-
-                if success:
-                    try:
-                        metadata_json = json.loads(json_data)
-                        if metadata_json and "metadata" in metadata_json:
-                            meta = metadata_json["metadata"]
-                            # Check for common key names for viewer count
-                            if "viewers" in meta:
-                                viewer_count = meta["viewers"]
-                            elif "viewer_count" in meta:
-                                viewer_count = meta["viewer_count"]
-                            # Add other platform-specific keys if discovered, e.g., meta.get('online')
-                    except json.JSONDecodeError:
-                        pass
-                # --- END NEW ---
-
-                if meta:
-                    # Refine username based on platform-specific metadata fields
-                    author_field = None
-                    if final_platform == "Twitch":
-                        author_field = meta.get("user_name")
-                    elif final_platform == "YouTube":
-                        author_field = meta.get(
-                            "author", meta.get("channel", meta.get("uploader"))
-                        )
-                    elif final_platform == "Kick":
-                        author_field = meta.get("user", {}).get("username")
-                    elif final_platform in [
-                        "TikTok",
-                        "Douyin",
-                        "BiliBili",
-                        "Huya",
-                        "Bigo Live",
-                    ]:
-                        author_field = meta.get("author", meta.get("nick"))
-                    elif final_platform in ["Vimeo", "Dailymotion"]:
-                        author_field = meta.get(
-                            "uploader", meta.get("channel", meta.get("author"))
-                        )
-                    elif final_platform == "PlutoTV":
-                        author_field = meta.get("channel_name", meta.get("station_id"))
-                    elif final_platform == "BBC iPlayer":
-                        author_field = meta.get(
-                            "channel_title", meta.get("service_name")
-                        )
-                    elif final_platform == "RaiPlay":
-                        author_field = meta.get("channel", meta.get("name"))
-                    elif final_platform == "Atresplayer":
-                        author_field = meta.get("channel_name")
-                    elif final_platform == "RTVE Play":
-                        author_field = meta.get("channel", meta.get("id"))
-                    elif final_platform == "ARD Mediathek":
-                        author_field = meta.get("channelTitle", meta.get("station"))
-                    elif final_platform == "ZDF Mediathek":
-                        author_field = meta.get("channel", meta.get("stationName"))
-                    elif final_platform == "Mitele":
-                        author_field = meta.get("channel_name")
-                    elif final_platform == "AbemaTV":
-                        author_field = meta.get("channelName")
-                    elif final_platform == "Adult Swim":
-                        author_field = meta.get("title")
-                    elif final_platform == "Bloomberg":
-                        author_field = meta.get("title")
-
-                    if author_field:
-                        final_username = author_field
-
-                    category = extract_category_keywords(
-                        metadata_json, final_platform, url_type
-                    )
-                else:
-                    category = "N/A (details unavailable)"
-
-                detailed_live_streams.append(
-                    {
-                        "url": url,
-                        "alias": url_to_alias_map.get(url),
-                        "username": final_username,
-                        "platform": final_platform,
-                        "category_keywords": category,
-                        "viewer_count": viewer_count,  # <<<< ADD THIS NEW KEY
-                        "is_live": True,
-                    }
-                )
-            except FileNotFoundError as e:
-                logger.critical(
-                    f"streamlink command not found during metadata fetch for {url}"
-                )
-                raise  # Propagate critical streamlink error
-            except Exception as e:
-                logger.exception(f"Error fetching metadata for {url}")
-                # Fallback: add with basic info if metadata fetch failed but was initially live
-                detailed_live_streams.append(
-                    {
-                        "url": url,
-                        "alias": url_to_alias_map.get(url),
-                        "username": initial_username,
-                        "platform": initial_platform,
-                        "category_keywords": f"N/A (err: {str(e)[:20]})",
-                        "viewer_count": None,  # <<<< ADD THIS NEW KEY
-                        "is_live": True,
-                    }
-                )
-
-    # Sort the detailed_live_streams list to match the order of live_stream_candidates
-    ordered_final_streams = []
-    url_to_details_map = {s["url"]: s for s in detailed_live_streams}
-    for url in all_configured_urls:
+    # Create a list of "thin" StreamInfo objects for the live streams
+    live_streams_info = []
+    url_to_details_map = {s["url"]: s for s in all_configured_streams_data}
+    for url in live_stream_candidates:
         if url in url_to_details_map:
-            ordered_final_streams.append(url_to_details_map[url])
+            stream_data = url_to_details_map[url]
+            live_streams_info.append(StreamInfo(
+                url=url,
+                alias=stream_data.get('alias', 'Unnamed'),
+                status=StreamStatus.LIVE # Mark as live
+            ))
 
-    return ordered_final_streams
+    # Return the list of thin objects, converted to dictionaries for compatibility
+    return [s.model_dump() for s in live_streams_info]
 
 
 # --- Cache Management Functions ---

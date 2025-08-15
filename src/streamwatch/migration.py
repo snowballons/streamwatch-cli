@@ -14,7 +14,9 @@ from typing import Dict, List, Optional, Any
 
 from . import config
 from .database import StreamDatabase, get_database
+
 from .models import StreamInfo, StreamStatus
+from .stream_utils import parse_url_metadata
 
 logger = logging.getLogger(config.APP_NAME + ".migration")
 
@@ -41,34 +43,6 @@ class DataMigrator:
         self.db = db or get_database()
         self.backup_dir = Path.home() / ".config" / "streamwatch" / "migration_backup"
     
-    def check_migration_needed(self) -> bool:
-        """
-        Check if migration from JSON to SQLite is needed.
-        
-        Returns:
-            True if migration is needed, False otherwise
-        """
-        try:
-            # Check if JSON files exist
-            streams_file = config.STREAMS_FILE_PATH
-            config_file = config.CONFIG_FILE_PATH
-            
-            json_exists = streams_file.exists() or config_file.exists()
-            
-            # Check if database has any data
-            db_info = self.db.get_database_info()
-            db_has_data = db_info.get("stream_count", 0) > 0
-            
-            # Migration needed if JSON exists and database is empty
-            migration_needed = json_exists and not db_has_data
-            
-            logger.info(f"Migration check: JSON exists={json_exists}, DB has data={db_has_data}, Migration needed={migration_needed}")
-            
-            return migration_needed
-            
-        except Exception as e:
-            logger.error(f"Failed to check migration status: {e}")
-            return False
     
     def create_backup(self) -> Path:
         """
@@ -139,10 +113,19 @@ class DataMigrator:
             
             for stream_data in json_data:
                 try:
-                    # Use the enhanced StreamInfo.from_dict method for migration
-                    stream = StreamInfo.from_dict(stream_data)
+                    url = stream_data['url']
+                    alias = stream_data['alias']
+
+                    # --- INTELLIGENT PARSING STEP ---
+                    # Parse the URL to get the correct platform and username
+                    parsed_info = parse_url_metadata(url)
+                    platform = parsed_info.get('platform', 'Unknown')
+                    username = parsed_info.get('username', 'unknown_stream')
                     
-                    # Save to database
+                    # Create a complete, validated StreamInfo object with correct data
+                    stream = StreamInfo(url=url, alias=alias, platform=platform, username=username)
+                    
+                    # Save the CORRECT object to the database
                     self.db.save_stream(stream)
                     migrated_count += 1
                     
@@ -239,60 +222,53 @@ class DataMigrator:
     
     def perform_migration(self, create_backup: bool = True) -> Dict[str, Any]:
         """
-        Perform complete migration from JSON to SQLite.
-        
-        Args:
-            create_backup: Whether to create backup before migration
-            
-        Returns:
-            Migration results summary
+        Perform complete migration from JSON to SQLite, checking for required migrations internally.
         """
         try:
-            logger.info("Starting migration from JSON to SQLite")
+            logger.info("Checking for necessary data migrations...")
             
-            # Check if migration is needed
-            if not self.check_migration_needed():
-                logger.info("Migration not needed")
-                return {
-                    "success": True,
-                    "message": "Migration not needed",
-                    "streams_migrated": 0,
-                    "config_migrated": 0,
-                    "backup_path": None
-                }
-            
+            streams_migrated = 0
+            config_migrated = 0
             backup_path = None
-            if create_backup:
-                backup_path = self.create_backup()
+
+            # Check if streams.json exists and the database has no streams
+            streams_file_exists = config.STREAMS_FILE_PATH.exists()
+            db_has_streams = self.db.get_database_info().get("stream_count", 0) > 0
+
+            if streams_file_exists and not db_has_streams:
+                logger.info("Migration for streams.json is needed.")
+                if create_backup and not backup_path:
+                    backup_path = self.create_backup()
+                
+                streams_migrated = self.migrate_streams()
             
-            # Perform migrations
-            streams_migrated = self.migrate_streams()
-            config_migrated = self.migrate_config()
+            # For simplicity, we can assume config needs migration if streams did, or if the db is empty
+            config_file_exists = config.CONFIG_FILE_PATH.exists()
+            if config_file_exists and (streams_migrated > 0 or not db_has_streams):
+                logger.info("Migration for config.ini is needed.")
+                if create_backup and not backup_path:
+                    backup_path = self.create_backup()
+                
+                config_migrated = self.migrate_config()
             
-            # Verify migration
-            db_info = self.db.get_database_info()
-            
+            if streams_migrated == 0 and config_migrated == 0:
+                logger.info("No data migration was needed.")
+                return {"success": True, "message": "Migration not needed."}
+
             result = {
                 "success": True,
-                "message": f"Migration completed successfully",
+                "message": "Migration completed successfully",
                 "streams_migrated": streams_migrated,
                 "config_migrated": config_migrated,
                 "backup_path": str(backup_path) if backup_path else None,
-                "database_info": db_info
             }
             
-            logger.info(f"Migration completed: {streams_migrated} streams, {config_migrated} config values")
+            logger.info(f"Migration finished: {streams_migrated} streams, {config_migrated} config values")
             return result
             
         except Exception as e:
-            logger.error(f"Migration failed: {e}")
-            return {
-                "success": False,
-                "message": f"Migration failed: {e}",
-                "streams_migrated": 0,
-                "config_migrated": 0,
-                "backup_path": str(backup_path) if 'backup_path' in locals() and backup_path else None
-            }
+            logger.error(f"Migration failed: {e}", exc_info=True)
+            return {"success": False, "message": f"Migration failed: {e}"}
     
     def rollback_migration(self, backup_path: Path) -> bool:
         """

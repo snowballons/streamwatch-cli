@@ -230,14 +230,30 @@ class MenuHandler:
             manager = get_stream_list_manager()
             page_streams, pagination_info = manager.get_page(streams)
 
+            # --- Lazy Loading Enrichment Step ---
+            from .ui.pagination import get_lazy_loader
+            from .models import StreamInfo
+
+            lazy_loader = get_lazy_loader()
+            enriched_page_streams = []
+
+            # Convert dicts back to StreamInfo models for processing
+            thin_stream_models = [StreamInfo.model_validate(s) for s in page_streams]
+
+            for stream_model in thin_stream_models:
+                # Get enriched details from the lazy loader (uses cache)
+                enriched_model = lazy_loader.get_details(stream_model)
+                enriched_page_streams.append(enriched_model.model_dump())
+            # --- End of Lazy Loading Step ---
+
             # Display filter summary if filters are active
             filter_summary = manager.get_filter_summary()
             if filter_summary:
                 display_filter_summary(filter_summary)
 
-            # Display paginated streams
+            # Display paginated streams (now enriched)
             display_paginated_stream_list(
-                page_streams,
+                enriched_page_streams,
                 pagination_info,
                 title=title,
                 show_pagination_controls=True,

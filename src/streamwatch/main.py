@@ -95,20 +95,18 @@ def main() -> None:
     try:
         from .migration import DataMigrator
         migrator = DataMigrator()
-        if migrator.check_migration_needed():
-            logger.info("Migration needed: starting migration from JSON to SQLite.")
-            ui.console.print("[yellow]Migrating your data to the new database format...[/yellow]")
-            result = migrator.perform_migration(create_backup=True)
-            if result.get("success"):
-                ui.console.print(f"[green]Migration completed: {result['streams_migrated']} streams, {result['config_migrated']} config values migrated.[/green]")
-                if result.get("backup_path"):
-                    ui.console.print(f"[dim]Backup created at: {result['backup_path']}[/dim]")
-            else:
-                ui.console.print(f"[red]Migration failed: {result['message']}[/red]")
-                logger.critical(f"Migration failed: {result['message']}")
-                sys.exit(1)
-        else:
-            logger.info("Migration not needed.")
+        # The perform_migration function now handles the check internally
+        logger.info("Checking for and performing data migration if needed.")
+        result = migrator.perform_migration(create_backup=True)
+
+        if not result.get("success"):
+            ui.console.print(f"[red]Migration failed: {result['message']}[/red]")
+            logger.critical(f"Migration failed: {result['message']}")
+            sys.exit(1)
+        
+        if result.get("streams_migrated", 0) > 0 or result.get("config_migrated", 0) > 0:
+            ui.console.print("[green]Data migration completed successfully.[/green]")
+
     except Exception as e:
         logger.critical(f"Migration check/operation failed: {e}", exc_info=True)
         ui.console.print(f"[red]Migration check/operation failed: {e}[/red]")

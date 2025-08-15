@@ -145,70 +145,18 @@ def prompt_add_streams() -> List[Dict[str, str]]:
         if not urls_input:
             return []
 
-        # Security: Sanitize user input
-        if SECURITY_AVAILABLE:
-            try:
-                urls_input = sanitize_user_input(urls_input, "stream_input", max_length=2000)
-                log_user_action("add_streams_prompt", {"input_length": len(urls_input)})
-            except UISecurityError as e:
-                console.print(f"[red]Security Error:[/red] {safe_format_error_message(e)}")
-                return []
-
         new_streams_data = []
-        # Split by comma first to handle multiple entries
-        entries = urls_input.split(",")
-
+        entries = urls_input.split(',')
         for entry in entries:
             entry = entry.strip()
             if not entry:
                 continue
-
-            try:
-                parts = entry.split(maxsplit=1)  # Split only on the first space
-                url = parts[0].strip()
-                alias = parts[1].strip() if len(parts) > 1 else ""
-
-                # Validate URL and alias if security is available
-                if SECURITY_AVAILABLE:
-                    # Import validation functions
-                    from ..validators import validate_url, validate_alias
-
-                    try:
-                        # Validate URL
-                        is_valid, sanitized_url, metadata = validate_url(url, strict=False)
-
-                        # Use extracted username as alias if no alias provided
-                        if not alias and metadata.get('username') != 'unknown_stream':
-                            alias = f"{metadata['platform']} - {metadata['username']}"
-
-                        # Validate alias if provided
-                        if alias:
-                            alias = validate_alias(alias)
-
-                        new_streams_data.append({
-                            "url": sanitized_url,
-                            "alias": alias,
-                            "platform": metadata.get('platform', 'Unknown'),
-                            "username": metadata.get('username', 'unknown_stream')
-                        })
-
-                    except (ValidationError, SecurityError) as e:
-                        console.print(f"[red]Validation Error for '{url}':[/red] {safe_format_error_message(e)}")
-                        console.print("Skipping this entry. Please check the URL format.")
-                        continue
-                else:
-                    # Fallback without validation
-                    new_streams_data.append({"url": url, "alias": alias})
-
-            except Exception as e:
-                console.print(f"[red]Error processing entry '{entry}':[/red] {str(e)}")
-                continue
-
-        if SECURITY_AVAILABLE:
-            log_user_action("add_streams_completed", {"streams_added": len(new_streams_data)})
-
+            parts = entry.split(maxsplit=1)
+            url = parts[0].strip()
+            alias = parts[1].strip() if len(parts) > 1 else ""
+            # The UI now only returns the raw URL and alias
+            new_streams_data.append({'url': url, 'alias': alias})
         return new_streams_data
-
     except (EOFError, KeyboardInterrupt):
         console.print("\nAdd operation cancelled.", style="warning")
         return []
@@ -525,7 +473,7 @@ def show_playback_menu(
     text = Text()
     text.append("Playback Controls:\n", style="bold white")
     text.append("  [", style="dimmed").append("S", style="menu_key").append(
-        "]top Stream\n", style="menu_option"
+        "]eplay Stream\n", style="menu_option"
     )
     if has_next:
         text.append("  [", style="dimmed").append("N", style="menu_key").append(
