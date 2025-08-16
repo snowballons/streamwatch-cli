@@ -649,24 +649,68 @@ def fetch_live_streams(
         return []
 
     logger.info(f"Found {len(live_stream_candidates)} potentially live stream(s).")
+    logger.info("Fetching stream metadata...")
 
-    # Create a list of "thin" StreamInfo objects for the live streams
+    # Phase 2: Fetch metadata for live streams
     live_streams_info = []
     url_to_details_map = {s["url"]: s for s in all_configured_streams_data}
-    for url in live_stream_candidates:
-        if url in url_to_details_map:
-            stream_data = url_to_details_map[url]
-            live_streams_info.append(
-                StreamInfo(
-                    url=url,
-                    alias=stream_data.get("alias", "Unnamed"),
-                    platform=stream_data.get("platform", "Unknown"),  # Add this
-                    username=stream_data.get("username", "unknown"),  # Add this
-                    status=StreamStatus.LIVE,  # Mark as live
+    
+    with ThreadPoolExecutor(max_workers=config.get_max_workers_metadata()) as executor:
+        future_to_url = {
+            executor.submit(get_stream_metadata_json, url): url
+            for url in live_stream_candidates
+        }
+        
+        for future in as_completed(future_to_url):
+            url = future_to_url[future]
+            success, json_data = future.result()
+            
+            if url in url_to_details_map:
+                stream_data = url_to_details_map[url]
+                
+                # Extract category/title from metadata
+                category = "N/A"
+                viewer_count = None
+                title = None
+                
+                if success and json_data:
+                    try:
+                        import json
+                        metadata_json = json.loads(json_data)
+                        if "metadata" in metadata_json:
+                            meta = metadata_json["metadata"]
+                            title = meta.get("title")
+                            
+                            # Extract viewer count
+                            for key in ["viewers", "viewer_count", "online"]:
+                                if key in meta and meta[key] is not None:
+                                    try:
+                                        viewer_count = int(meta[key])
+                                        if viewer_count >= 0:
+                                            break
+                                    except (ValueError, TypeError):
+                                        continue
+                            
+                            # Extract category using existing logic
+                            platform = stream_data.get("platform", "Unknown")
+                            category = extract_category_keywords((success, json_data), platform)
+                    except (json.JSONDecodeError, KeyError) as e:
+                        logger.debug(f"Could not parse metadata for {url}: {e}")
+                
+                live_streams_info.append(
+                    StreamInfo(
+                        url=url,
+                        alias=stream_data.get("alias", "Unnamed"),
+                        platform=stream_data.get("platform", "Unknown"),
+                        username=stream_data.get("username", "unknown"),
+                        category=category,
+                        title=title,
+                        viewer_count=viewer_count,
+                        status=StreamStatus.LIVE,
+                    )
                 )
-            )
 
-    # Return the list of thin objects, converted to dictionaries for compatibility
+    # Return the list of enhanced objects, converted to dictionaries for compatibility
     return [s.model_dump() for s in live_streams_info]
 
 

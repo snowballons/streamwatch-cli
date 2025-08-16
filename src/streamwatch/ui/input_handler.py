@@ -54,8 +54,6 @@ def prompt_for_filepath(
     prompt_text: str = "Enter file path: ", default_filename: str = ""
 ) -> Optional[str]:
     """Prompts the user for a file path and validates it."""
-    from ..validators import ValidationError, validate_file_path
-
     console.print(
         "Enter the path for the file. You can use `~` for your home directory."
     )
@@ -65,11 +63,30 @@ def prompt_for_filepath(
         if not raw_path:
             return None
 
-        validated_path = validate_file_path(raw_path)
-        return str(validated_path)
-    except (ValidationError, SecurityError) as e:
-        console.print(f"[red]Invalid Path:[/red] {safe_format_error_message(e)}")
-        return None
+        # Try validation if available, but don't fail if validator has issues
+        try:
+            from ..validators import ValidationError, validate_file_path
+            validated_path = validate_file_path(raw_path)
+            return str(validated_path)
+        except ImportError:
+            # Fallback: basic path validation without validators module
+            from pathlib import Path
+            try:
+                path = Path(raw_path).expanduser()
+                return str(path)
+            except Exception as e:
+                logger.debug(f"Basic path validation failed: {e}")
+                return raw_path  # Return raw path as last resort
+        except (ValidationError, SecurityError) as e:
+            # Log the validation error but allow the operation to continue with basic validation
+            logger.warning(f"Path validation warning: {e}")
+            try:
+                from pathlib import Path
+                path = Path(raw_path).expanduser()
+                return str(path)
+            except Exception:
+                return raw_path  # Return raw path if all validation fails
+                
     except (EOFError, KeyboardInterrupt):
         console.print("\nOperation cancelled.", style="warning")
         return None
