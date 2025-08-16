@@ -1,6 +1,6 @@
+import json
 import logging
 import time
-import json
 from pathlib import Path
 from typing import Any, Dict, List, Tuple
 
@@ -29,26 +29,30 @@ class StreamManager:
         added_count = 0
         for stream_data in new_streams_data:
             try:
-                url = stream_data['url']
-                alias = stream_data['alias']
+                url = stream_data["url"]
+                alias = stream_data["alias"]
 
                 # Parse the URL to get platform and a default username
                 parsed_info = parse_url_metadata(url)
-                platform = parsed_info.get('platform', 'Unknown')
-                username = parsed_info.get('username', 'unknown_stream')
+                platform = parsed_info.get("platform", "Unknown")
+                username = parsed_info.get("username", "unknown_stream")
 
                 # If no alias was provided by the user, use the username as the default
                 if not alias:
                     alias = username
 
                 # Create a complete, validated StreamInfo object
-                stream = StreamInfo(url=url, alias=alias, platform=platform, username=username)
+                stream = StreamInfo(
+                    url=url, alias=alias, platform=platform, username=username
+                )
                 self.db.save_stream(stream)
                 added_count += 1
             except Exception as e:
                 logger.warning(f"Could not add stream {stream_data.get('url')}: {e}")
-                ui.console.print(f"[error]Failed to add stream '{stream_data.get('url')}': {e}[/error]")
-        
+                ui.console.print(
+                    f"[error]Failed to add stream '{stream_data.get('url')}': {e}[/error]"
+                )
+
         if added_count > 0:
             message = f"Successfully added {added_count} new stream(s)."
             return True, message
@@ -69,7 +73,7 @@ class StreamManager:
                     stream_to_remove = all_streams[index]
                     if self.db.delete_stream(stream_to_remove.url):
                         removed_count += 1
-            
+
             message = f"Successfully removed {removed_count} stream(s)."
             return True, message
         elif indices_to_remove is None:
@@ -89,7 +93,9 @@ class StreamManager:
 
     def import_streams(self) -> Tuple[bool, str]:
         """Handle importing streams from a file into the database."""
-        filepath_str = ui.prompt_for_filepath("Enter path of .txt file to import from: ")
+        filepath_str = ui.prompt_for_filepath(
+            "Enter path of .txt file to import from: "
+        )
         if not filepath_str:
             return False, "Import cancelled."
 
@@ -98,8 +104,12 @@ class StreamManager:
             if not source_path.is_file():
                 return False, f"Import file not found at: {source_path}"
 
-            with open(source_path, 'r', encoding='utf-8') as f:
-                urls_to_import = [line.strip() for line in f if line.strip() and not line.startswith('#')]
+            with open(source_path, "r", encoding="utf-8") as f:
+                urls_to_import = [
+                    line.strip()
+                    for line in f
+                    if line.strip() and not line.startswith("#")
+                ]
 
             if not urls_to_import:
                 return False, "Import file is empty or contains no valid lines."
@@ -108,16 +118,20 @@ class StreamManager:
             for url in urls_to_import:
                 try:
                     parsed_info = parse_url_metadata(url)
-                    platform = parsed_info.get('platform', 'Unknown')
-                    username = parsed_info.get('username', 'unknown_stream')
-                    alias = username  # For imports, the username is the best default alias
+                    platform = parsed_info.get("platform", "Unknown")
+                    username = parsed_info.get("username", "unknown_stream")
+                    alias = (
+                        username  # For imports, the username is the best default alias
+                    )
 
-                    stream_info = StreamInfo(url=url, alias=alias, platform=platform, username=username)
+                    stream_info = StreamInfo(
+                        url=url, alias=alias, platform=platform, username=username
+                    )
                     self.db.save_stream(stream_info)
                     imported_count += 1
                 except Exception as e:
                     logger.warning(f"Could not import stream URL {url}: {e}")
-            
+
             message = f"Successfully imported {imported_count} stream(s)."
             return True, message
         except Exception as e:
@@ -142,11 +156,11 @@ class StreamManager:
             if not all_streams:
                 return False, "There are no streams in the database to export."
 
-            streams_to_export = [s.model_dump(mode='json') for s in all_streams]
+            streams_to_export = [s.model_dump(mode="json") for s in all_streams]
 
-            with open(destination_path, 'w', encoding='utf-8') as f:
+            with open(destination_path, "w", encoding="utf-8") as f:
                 json.dump(streams_to_export, f, indent=4)
-            
+
             message = f"Successfully exported {len(all_streams)} streams to {destination_path}"
             logger.info(message)
             return True, message

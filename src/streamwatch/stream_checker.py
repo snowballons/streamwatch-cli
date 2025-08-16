@@ -1,5 +1,3 @@
-import json
-from .models import StreamInfo, StreamMetadata, StreamStatus
 import json  # For parsing --json output
 import logging  # Import logging
 import re
@@ -11,14 +9,22 @@ from typing import Any, Dict, List, Optional, Tuple, Union
 from . import config
 from .cache import get_cache
 from .exceptions import (
-    StreamlinkError, StreamNotFoundError, NetworkError,
-    AuthenticationError, TimeoutError, RateLimitExceededError, categorize_streamlink_error
+    AuthenticationError,
+    NetworkError,
+    RateLimitExceededError,
+    StreamlinkError,
+    StreamNotFoundError,
+    TimeoutError,
+    categorize_streamlink_error,
 )
 from .models import StreamInfo, StreamMetadata, StreamStatus
 from .rate_limiter import get_rate_limiter
 from .resilience import (
-    RetryConfig, CircuitBreakerConfig, resilient_operation,
-    get_circuit_breaker, CircuitBreakerOpenError
+    CircuitBreakerConfig,
+    CircuitBreakerOpenError,
+    RetryConfig,
+    get_circuit_breaker,
+    resilient_operation,
 )
 from .stream_utils import parse_url_metadata  # IMPORT THE NEW FUNCTION
 
@@ -33,7 +39,7 @@ def _get_retry_config() -> RetryConfig:
         base_delay=config.get_retry_base_delay(),
         max_delay=config.get_retry_max_delay(),
         exponential_base=config.get_retry_exponential_base(),
-        jitter=config.get_retry_jitter()
+        jitter=config.get_retry_jitter(),
     )
 
 
@@ -42,7 +48,7 @@ def _get_circuit_breaker_config() -> CircuitBreakerConfig:
     return CircuitBreakerConfig(
         failure_threshold=config.get_circuit_breaker_failure_threshold(),
         recovery_timeout=config.get_circuit_breaker_recovery_timeout(),
-        success_threshold=config.get_circuit_breaker_success_threshold()
+        success_threshold=config.get_circuit_breaker_success_threshold(),
     )
 
 
@@ -51,7 +57,9 @@ class StreamCheckResult:
     Represents the result of a stream liveness check with detailed error information.
     """
 
-    def __init__(self, is_live: bool, url: str, error: Optional[StreamlinkError] = None):
+    def __init__(
+        self, is_live: bool, url: str, error: Optional[StreamlinkError] = None
+    ):
         """
         Initialize StreamCheckResult.
 
@@ -66,12 +74,9 @@ class StreamCheckResult:
 
     def to_dict(self) -> Dict[str, Any]:
         """Convert result to dictionary for structured logging/debugging."""
-        result = {
-            'is_live': self.is_live,
-            'url': self.url
-        }
+        result = {"is_live": self.is_live, "url": self.url}
         if self.error:
-            result['error'] = self.error.to_dict()
+            result["error"] = self.error.to_dict()
         return result
 
 
@@ -80,8 +85,13 @@ class MetadataResult:
     Represents the result of a stream metadata fetch with detailed error information.
     """
 
-    def __init__(self, success: bool, url: str, json_data: Optional[str] = None,
-                 error: Optional[StreamlinkError] = None):
+    def __init__(
+        self,
+        success: bool,
+        url: str,
+        json_data: Optional[str] = None,
+        error: Optional[StreamlinkError] = None,
+    ):
         """
         Initialize MetadataResult.
 
@@ -99,12 +109,12 @@ class MetadataResult:
     def to_dict(self) -> Dict[str, Any]:
         """Convert result to dictionary for structured logging/debugging."""
         result = {
-            'success': self.success,
-            'url': self.url,
-            'has_json_data': self.json_data is not None
+            "success": self.success,
+            "url": self.url,
+            "has_json_data": self.json_data is not None,
         }
         if self.error:
-            result['error'] = self.error.to_dict()
+            result["error"] = self.error.to_dict()
         return result
 
 
@@ -159,7 +169,7 @@ def _is_stream_live_core(url: str) -> StreamCheckResult:
             stderr=process.stderr or "",
             stdout=process.stdout or "",
             return_code=process.returncode,
-            url=url
+            url=url,
         )
 
         # Log appropriate level based on error type
@@ -173,10 +183,7 @@ def _is_stream_live_core(url: str) -> StreamCheckResult:
         return StreamCheckResult(is_live=False, url=url, error=error)
 
     except subprocess.TimeoutExpired:
-        error = TimeoutError(
-            f"Timeout expired checking liveness for: {url}",
-            url=url
-        )
+        error = TimeoutError(f"Timeout expired checking liveness for: {url}", url=url)
         logger.warning(f"Timeout expired checking liveness for: {url}")
         return StreamCheckResult(is_live=False, url=url, error=error)
 
@@ -187,8 +194,7 @@ def _is_stream_live_core(url: str) -> StreamCheckResult:
     except Exception as e:
         # Wrap unexpected exceptions in StreamlinkError
         error = StreamlinkError(
-            f"Unexpected error checking liveness: {str(e)}",
-            url=url
+            f"Unexpected error checking liveness: {str(e)}", url=url
         )
         logger.exception(f"Error checking liveness for {url}")
         return StreamCheckResult(is_live=False, url=url, error=error)
@@ -218,16 +224,17 @@ def is_stream_live_for_check_detailed(url: str) -> StreamCheckResult:
     # Apply rate limiting before making streamlink call
     if config.get_rate_limit_enabled():
         rate_limiter = get_rate_limiter()
-        timeout = config.get_streamlink_timeout_liveness()  # Use streamlink timeout as rate limit timeout
+        timeout = (
+            config.get_streamlink_timeout_liveness()
+        )  # Use streamlink timeout as rate limit timeout
 
         if not rate_limiter.acquire(url, timeout=timeout):
             # Rate limit exceeded
             from .stream_utils import parse_url_metadata
+
             platform = parse_url_metadata(url).get("platform", "Unknown")
             error = RateLimitExceededError(
-                f"Rate limit exceeded for {platform}",
-                url=url,
-                platform=platform
+                f"Rate limit exceeded for {platform}", url=url, platform=platform
             )
             logger.warning(f"Rate limit exceeded for {url}")
             return StreamCheckResult(is_live=False, url=url, error=error)
@@ -243,13 +250,15 @@ def is_stream_live_for_check_detailed(url: str) -> StreamCheckResult:
                 operation_name=f"stream_liveness_check_{url}",
                 retry_config=_get_retry_config(),
                 circuit_breaker_config=_get_circuit_breaker_config(),
-                use_circuit_breaker=True
+                use_circuit_breaker=True,
             )
             def resilient_check():
                 result = _is_stream_live_core(url)
                 # If the result indicates an error that should trigger circuit breaker,
                 # raise the exception to be handled by resilience patterns
-                if result.error and isinstance(result.error, (NetworkError, TimeoutError)):
+                if result.error and isinstance(
+                    result.error, (NetworkError, TimeoutError)
+                ):
                     raise result.error
                 return result
 
@@ -258,8 +267,7 @@ def is_stream_live_for_check_detailed(url: str) -> StreamCheckResult:
         except CircuitBreakerOpenError as e:
             # Circuit breaker is open - return a specific error
             error = NetworkError(
-                f"Circuit breaker open for stream checks: {str(e)}",
-                url=url
+                f"Circuit breaker open for stream checks: {str(e)}", url=url
             )
             logger.warning(f"Circuit breaker open for stream liveness check: {url}")
             result = StreamCheckResult(is_live=False, url=url, error=error)
@@ -314,7 +322,7 @@ def get_stream_metadata_json(url: str) -> Tuple[bool, str]:
         return (False, str(e))
 
 
-def _get_stream_metadata_core(url: str) -> 'MetadataResult':
+def _get_stream_metadata_core(url: str) -> "MetadataResult":
     """
     Core implementation for fetching stream metadata.
     This is the base function without resilience patterns.
@@ -350,8 +358,10 @@ def _get_stream_metadata_core(url: str) -> 'MetadataResult':
             except json.JSONDecodeError as e:
                 error = StreamlinkError(
                     f"Invalid JSON response: {str(e)}",
-                    url=url, stdout=process.stdout, stderr=process.stderr,
-                    return_code=process.returncode
+                    url=url,
+                    stdout=process.stdout,
+                    stderr=process.stderr,
+                    return_code=process.returncode,
                 )
                 logger.warning(f"Could not process JSON for {url}: {e}")
                 return MetadataResult(success=False, url=url, error=error)
@@ -361,17 +371,14 @@ def _get_stream_metadata_core(url: str) -> 'MetadataResult':
             stderr=process.stderr or "",
             stdout=process.stdout or "",
             return_code=process.returncode,
-            url=url
+            url=url,
         )
 
         logger.warning(f"streamlink --json for {url} failed - {error}")
         return MetadataResult(success=False, url=url, error=error)
 
     except subprocess.TimeoutExpired:
-        error = TimeoutError(
-            f"Timeout fetching JSON metadata for {url}",
-            url=url
-        )
+        error = TimeoutError(f"Timeout fetching JSON metadata for {url}", url=url)
         logger.warning(f"Timeout fetching JSON metadata for {url}")
         return MetadataResult(success=False, url=url, error=error)
 
@@ -383,14 +390,13 @@ def _get_stream_metadata_core(url: str) -> 'MetadataResult':
     except Exception as e:
         # Wrap unexpected exceptions in StreamlinkError
         error = StreamlinkError(
-            f"Unexpected error fetching metadata: {str(e)}",
-            url=url
+            f"Unexpected error fetching metadata: {str(e)}", url=url
         )
         logger.exception(f"Error fetching JSON metadata for {url}")
         return MetadataResult(success=False, url=url, error=error)
 
 
-def get_stream_metadata_json_detailed(url: str) -> 'MetadataResult':
+def get_stream_metadata_json_detailed(url: str) -> "MetadataResult":
     """
     Fetches stream metadata using streamlink --json with detailed error information,
     resilience patterns (retry logic and circuit breaker), and rate limiting.
@@ -404,16 +410,19 @@ def get_stream_metadata_json_detailed(url: str) -> 'MetadataResult':
     # Apply rate limiting before making streamlink call
     if config.get_rate_limit_enabled():
         rate_limiter = get_rate_limiter()
-        timeout = config.get_streamlink_timeout_metadata()  # Use metadata timeout as rate limit timeout
+        timeout = (
+            config.get_streamlink_timeout_metadata()
+        )  # Use metadata timeout as rate limit timeout
 
         if not rate_limiter.acquire(url, timeout=timeout):
             # Rate limit exceeded
             from .stream_utils import parse_url_metadata
+
             platform = parse_url_metadata(url).get("platform", "Unknown")
             error = RateLimitExceededError(
                 f"Rate limit exceeded for {platform} metadata fetch",
                 url=url,
-                platform=platform
+                platform=platform,
             )
             logger.warning(f"Rate limit exceeded for metadata fetch: {url}")
             return MetadataResult(success=False, url=url, error=error)
@@ -428,13 +437,17 @@ def get_stream_metadata_json_detailed(url: str) -> 'MetadataResult':
             operation_name=f"stream_metadata_fetch_{url}",
             retry_config=_get_retry_config(),
             circuit_breaker_config=_get_circuit_breaker_config(),
-            use_circuit_breaker=True
+            use_circuit_breaker=True,
         )
         def resilient_fetch():
             result = _get_stream_metadata_core(url)
             # If the result indicates an error that should trigger circuit breaker,
             # raise the exception to be handled by resilience patterns
-            if not result.success and result.error and isinstance(result.error, (NetworkError, TimeoutError)):
+            if (
+                not result.success
+                and result.error
+                and isinstance(result.error, (NetworkError, TimeoutError))
+            ):
                 raise result.error
             return result
 
@@ -443,8 +456,7 @@ def get_stream_metadata_json_detailed(url: str) -> 'MetadataResult':
     except CircuitBreakerOpenError as e:
         # Circuit breaker is open - return a specific error
         error = NetworkError(
-            f"Circuit breaker open for metadata fetch: {str(e)}",
-            url=url
+            f"Circuit breaker open for metadata fetch: {str(e)}", url=url
         )
         logger.warning(f"Circuit breaker open for metadata fetch: {url}")
         return MetadataResult(success=False, url=url, error=error)
@@ -595,7 +607,7 @@ def extract_category_keywords(
 
 
 def fetch_live_streams(
-    all_configured_streams_data: List[Dict[str, str]]
+    all_configured_streams_data: List[Dict[str, str]],
 ) -> List[Dict[str, Any]]:
     """
     Fetches the list of currently live streams with enhanced metadata.
@@ -644,19 +656,22 @@ def fetch_live_streams(
     for url in live_stream_candidates:
         if url in url_to_details_map:
             stream_data = url_to_details_map[url]
-            live_streams_info.append(StreamInfo(
-                url=url,
-                alias=stream_data.get('alias', 'Unnamed'),
-                platform=stream_data.get('platform', 'Unknown'), # Add this
-                username=stream_data.get('username', 'unknown'), # Add this
-                status=StreamStatus.LIVE # Mark as live
-            ))
+            live_streams_info.append(
+                StreamInfo(
+                    url=url,
+                    alias=stream_data.get("alias", "Unnamed"),
+                    platform=stream_data.get("platform", "Unknown"),  # Add this
+                    username=stream_data.get("username", "unknown"),  # Add this
+                    status=StreamStatus.LIVE,  # Mark as live
+                )
+            )
 
     # Return the list of thin objects, converted to dictionaries for compatibility
     return [s.model_dump() for s in live_streams_info]
 
 
 # --- Cache Management Functions ---
+
 
 def clear_stream_cache() -> int:
     """
@@ -729,6 +744,7 @@ def get_cache_stats() -> Dict[str, int]:
 
 # --- Rate Limiting Management Functions ---
 
+
 def get_rate_limit_status() -> Dict[str, Dict[str, float]]:
     """
     Get rate limiting status for all platforms.
@@ -765,6 +781,7 @@ def reset_rate_limiters() -> None:
     Reset all rate limiters (mainly for testing and debugging).
     """
     from .rate_limiter import reset_rate_limiter
+
     reset_rate_limiter()
     logger.info("Reset all rate limiters")
 
@@ -791,7 +808,9 @@ def get_rate_limit_status_message() -> str:
             global_status = status["global"]
             utilization = global_status["utilization"]
             if utilization > 0.7:  # High utilization
-                messages.append(f"Rate limiting active (Global: {utilization:.0%} used)")
+                messages.append(
+                    f"Rate limiting active (Global: {utilization:.0%} used)"
+                )
 
         # Platform status - only show if heavily utilized
         for platform, platform_status in status.items():
@@ -799,7 +818,9 @@ def get_rate_limit_status_message() -> str:
                 continue
             utilization = platform_status["utilization"]
             if utilization > 0.8:  # Very high utilization
-                messages.append(f"{platform.title()}: {utilization:.0%} rate limit used")
+                messages.append(
+                    f"{platform.title()}: {utilization:.0%} rate limit used"
+                )
 
         if messages:
             return "⏳ " + ", ".join(messages)

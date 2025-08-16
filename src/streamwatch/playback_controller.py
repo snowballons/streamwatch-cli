@@ -137,7 +137,6 @@ class PlaybackController:
 
                     continue
 
-
             # --- Show Menu and Get User Action ---
             is_navigation_possible = len(all_live_streams_list) > 1
             action, data = ui.show_playback_menu(
@@ -150,7 +149,6 @@ class PlaybackController:
             # --- Handle User Action ---
             # Handle all actions through the existing function
             action_result = self.handle_playback_controls(
-
                 action,
                 data,
                 current_stream_info,
@@ -164,13 +162,16 @@ class PlaybackController:
             # --- Immediate Quit Handler ---
             # Handle the 'quit' action immediately to ensure a clean exit.
             if action_result.get("return_action") == "quit_application":
-                logger.info("User requested quit from playback. Terminating session and exiting.")
+                logger.info(
+                    "User requested quit from playback. Terminating session and exiting."
+                )
                 if player_process:
                     player.terminate_player_process(player_process)
                     player.execute_hook("post", current_stream_info, current_quality)
                 # We must exit the entire application here.
                 # Returning the string causes issues down the line.
                 import sys
+
                 ui.clear_screen()
                 ui.console.print("Exiting StreamWatch. Goodbye!", style="success")
                 sys.exit(0)
@@ -179,7 +180,16 @@ class PlaybackController:
             # --- Handle State Updates and Termination ---
 
             # Check if the current stream needs to be stopped for the next action
-            if action in ["s", "stop", "n", "next", "p", "previous", "c", "change_quality"]:
+            if action in [
+                "s",
+                "stop",
+                "n",
+                "next",
+                "p",
+                "previous",
+                "c",
+                "change_quality",
+            ]:
                 if player_process:
                     player.terminate_player_process(player_process)
                     player.execute_hook("post", current_stream_info, current_quality)
@@ -204,7 +214,7 @@ class PlaybackController:
 
             # Handle actions that should end the entire playback session
             if action_result["terminate"]:
-                if player_process: # Ensure player is stopped before exiting
+                if player_process:  # Ensure player is stopped before exiting
                     player.terminate_player_process(player_process)
                     player.execute_hook("post", current_stream_info, current_quality)
                 return action_result["return_action"]
@@ -238,7 +248,9 @@ class PlaybackController:
 
         if action == "s" or action == "stop":  # 'stop' now means 'replay'
             logger.info("User requested to replay the current stream.")
-            result["new_player_process"] = None  # This signals the main loop to re-launch
+            result[
+                "new_player_process"
+            ] = None  # This signals the main loop to re-launch
 
         elif action == "m" or action == "main_menu":
             logger.info("User returned to main menu from playback.")
@@ -293,7 +305,9 @@ class PlaybackController:
             if is_navigation_possible:
                 logger.info("User requested previous stream.")
                 # Modulo arithmetic for circular list (works for negative numbers in Python)
-                new_index = (current_playing_index - 1 + len(all_live_streams_list)) % len(all_live_streams_list)
+                new_index = (
+                    current_playing_index - 1 + len(all_live_streams_list)
+                ) % len(all_live_streams_list)
                 new_stream_info = all_live_streams_list[new_index]
                 result["new_stream_info"] = new_stream_info
                 result["new_index"] = new_index
@@ -330,7 +344,9 @@ class PlaybackController:
             # If no user action was taken, check if the player is still running.
             if player_process and player_process.poll() is not None:
                 logger.warning("Player process has exited unexpectedly.")
-                ui.console.print("\n[warning]Player exited unexpectedly.[/warning]", style="warning")
+                ui.console.print(
+                    "\n[warning]Player exited unexpectedly.[/warning]", style="warning"
+                )
                 # This should terminate the session and return to the main menu
                 result["terminate"] = True
                 result["return_action"] = "return_to_main"

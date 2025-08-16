@@ -41,8 +41,6 @@ class AddStreamCommand(Command):
         return CommandResult(success=success, message=message, needs_refresh=success)
 
 
-
-
 class RemoveStreamCommand(Command):
     """
     Command to remove streams from the StreamWatch configuration.

@@ -226,6 +226,7 @@ def get_twitch_disable_ads() -> bool:
 
 # --- Resilience Configuration Accessors ---
 
+
 def get_retry_max_attempts() -> int:
     """Get the maximum number of retry attempts."""
     return config_parser.getint(
@@ -285,7 +286,9 @@ def get_circuit_breaker_recovery_timeout() -> float:
     return config_parser.getfloat(
         "Resilience",
         "circuit_breaker_recovery_timeout",
-        fallback=float(DEFAULT_CONFIG["Resilience"]["circuit_breaker_recovery_timeout"]),
+        fallback=float(
+            DEFAULT_CONFIG["Resilience"]["circuit_breaker_recovery_timeout"]
+        ),
     )
 
 
@@ -303,7 +306,8 @@ def get_circuit_breaker_enabled() -> bool:
     return config_parser.getboolean(
         "Resilience",
         "circuit_breaker_enabled",
-        fallback=DEFAULT_CONFIG["Resilience"]["circuit_breaker_enabled"].lower() == "true",
+        fallback=DEFAULT_CONFIG["Resilience"]["circuit_breaker_enabled"].lower()
+        == "true",
     )
 
 
@@ -376,14 +380,18 @@ def get_cache_ttl_seconds() -> int:
 def get_cache_auto_cleanup() -> bool:
     """Get whether automatic cache cleanup is enabled."""
     return config_parser.getboolean(
-        "Cache", "auto_cleanup", fallback=DEFAULT_CONFIG["Cache"]["auto_cleanup"] == "true"
+        "Cache",
+        "auto_cleanup",
+        fallback=DEFAULT_CONFIG["Cache"]["auto_cleanup"] == "true",
     )
 
 
 def get_cache_cleanup_interval() -> int:
     """Get the cache cleanup interval in seconds."""
     return config_parser.getint(
-        "Cache", "cleanup_interval", fallback=int(DEFAULT_CONFIG["Cache"]["cleanup_interval"])
+        "Cache",
+        "cleanup_interval",
+        fallback=int(DEFAULT_CONFIG["Cache"]["cleanup_interval"]),
     )
 
 
@@ -391,23 +399,27 @@ def get_cache_cleanup_interval() -> int:
 def get_rate_limit_enabled() -> bool:
     """Get whether rate limiting is enabled."""
     return config_parser.getboolean(
-        "RateLimit", "enabled", fallback=DEFAULT_CONFIG["RateLimit"]["enabled"] == "true"
+        "RateLimit",
+        "enabled",
+        fallback=DEFAULT_CONFIG["RateLimit"]["enabled"] == "true",
     )
 
 
 def get_rate_limit_global_requests_per_second() -> float:
     """Get the global rate limit in requests per second."""
     return config_parser.getfloat(
-        "RateLimit", "global_requests_per_second",
-        fallback=float(DEFAULT_CONFIG["RateLimit"]["global_requests_per_second"])
+        "RateLimit",
+        "global_requests_per_second",
+        fallback=float(DEFAULT_CONFIG["RateLimit"]["global_requests_per_second"]),
     )
 
 
 def get_rate_limit_global_burst_capacity() -> int:
     """Get the global burst capacity."""
     return config_parser.getint(
-        "RateLimit", "global_burst_capacity",
-        fallback=int(DEFAULT_CONFIG["RateLimit"]["global_burst_capacity"])
+        "RateLimit",
+        "global_burst_capacity",
+        fallback=int(DEFAULT_CONFIG["RateLimit"]["global_burst_capacity"]),
     )
 
 
@@ -422,13 +434,15 @@ def get_rate_limit_platform_configs() -> Dict[str, Dict[str, float]]:
 
         configs[platform] = {
             "requests_per_second": config_parser.getfloat(
-                "RateLimit", rps_key,
-                fallback=float(DEFAULT_CONFIG["RateLimit"][rps_key])
+                "RateLimit",
+                rps_key,
+                fallback=float(DEFAULT_CONFIG["RateLimit"][rps_key]),
             ),
             "burst_capacity": config_parser.getint(
-                "RateLimit", burst_key,
-                fallback=int(DEFAULT_CONFIG["RateLimit"][burst_key])
-            )
+                "RateLimit",
+                burst_key,
+                fallback=int(DEFAULT_CONFIG["RateLimit"][burst_key]),
+            ),
         }
 
     return configs
@@ -447,6 +461,7 @@ def get_post_playback_hook() -> str:
 
 # --- Pagination and UI Configuration ---
 
+
 def get_streams_per_page() -> int:
     """Get the number of streams to display per page."""
     return config_parser.getint("Interface", "streams_per_page", fallback=20)
@@ -459,12 +474,16 @@ def get_enable_search() -> bool:
 
 def get_enable_category_filter() -> bool:
     """Get whether category filtering is enabled."""
-    return config_parser.getboolean("Interface", "enable_category_filter", fallback=True)
+    return config_parser.getboolean(
+        "Interface", "enable_category_filter", fallback=True
+    )
 
 
 def get_enable_platform_filter() -> bool:
     """Get whether platform filtering is enabled."""
-    return config_parser.getboolean("Interface", "enable_platform_filter", fallback=True)
+    return config_parser.getboolean(
+        "Interface", "enable_platform_filter", fallback=True
+    )
 
 
 def get_refresh_interval() -> float:
@@ -478,6 +497,7 @@ def get_show_offline_streams() -> bool:
 
 
 # --- Memory Optimization Configuration ---
+
 
 def get_metadata_cache_size() -> int:
     """Get the maximum number of cached stream metadata entries."""

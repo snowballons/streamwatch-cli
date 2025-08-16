@@ -9,17 +9,24 @@ import subprocess
 from datetime import datetime
 from enum import Enum
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional
 from urllib.parse import urlparse
 
-from pydantic import BaseModel, Field, field_validator, model_validator, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 # Import validators - use try/except to handle circular imports
 try:
     from .validators import (
-        validate_url, validate_alias, validate_username, validate_category,
-        validate_title, validate_viewer_count, ValidationError, SecurityError
+        SecurityError,
+        ValidationError,
+        validate_alias,
+        validate_category,
+        validate_title,
+        validate_url,
+        validate_username,
+        validate_viewer_count,
     )
+
     VALIDATORS_AVAILABLE = True
 except ImportError:
     VALIDATORS_AVAILABLE = False
@@ -61,16 +68,18 @@ class UrlMetadata(BaseModel):
     """Metadata extracted from a stream URL with validation."""
 
     model_config = ConfigDict(
-        str_strip_whitespace=True,
-        validate_assignment=True,
-        extra='forbid'
+        str_strip_whitespace=True, validate_assignment=True, extra="forbid"
     )
 
-    platform: str = Field(..., min_length=1, description="Platform name (e.g., 'Twitch', 'YouTube')")
-    username: str = Field(..., min_length=1, description="Username or channel identifier")
+    platform: str = Field(
+        ..., min_length=1, description="Platform name (e.g., 'Twitch', 'YouTube')"
+    )
+    username: str = Field(
+        ..., min_length=1, description="Username or channel identifier"
+    )
     url_type: UrlType = Field(default=UrlType.UNKNOWN, description="Type of URL parsed")
 
-    @field_validator('platform')
+    @field_validator("platform")
     @classmethod
     def validate_platform(cls, v: str) -> str:
         """Validate and normalize platform name."""
@@ -78,14 +87,14 @@ class UrlMetadata(BaseModel):
             raise ValueError("Platform cannot be empty")
         return v.strip().title()
 
-    @field_validator('username')
+    @field_validator("username")
     @classmethod
     def validate_username(cls, v: str) -> str:
         """Validate username format."""
         if not v or not v.strip():
             raise ValueError("Username cannot be empty")
         # Remove common URL artifacts
-        username = v.strip().lstrip('@').lower()
+        username = v.strip().lstrip("@").lower()
         if not username:
             raise ValueError("Username cannot be empty after cleaning")
         return username
@@ -103,28 +112,36 @@ class StreamInfo(BaseModel):
     """Complete information about a stream with comprehensive validation."""
 
     model_config = ConfigDict(
-        frozen=True,  # <-- ADD THIS LINE
+        frozen=True,
         str_strip_whitespace=True,
         validate_assignment=True,
-        extra='forbid',
-        json_encoders={
-            StreamStatus: lambda v: v.value,
-            UrlType: lambda v: v.value,
-        }
+        extra="forbid",
     )
 
     url: str = Field(..., min_length=1, description="Stream URL")
-    alias: str = Field(..., min_length=1, description="User-friendly alias for the stream")
+    alias: str = Field(
+        ..., min_length=1, description="User-friendly alias for the stream"
+    )
     platform: str = Field(default="Unknown", description="Platform name")
-    username: str = Field(default="unknown_stream", description="Username or channel identifier")
+    username: str = Field(
+        default="unknown_stream", description="Username or channel identifier"
+    )
     category: str = Field(default="N/A", description="Stream category or game")
-    title: Optional[str] = Field(default=None, description="Stream title") # <-- ADD THIS LINE
-    viewer_count: Optional[int] = Field(default=None, ge=0, description="Current viewer count")
-    status: StreamStatus = Field(default=StreamStatus.UNKNOWN, description="Current stream status")
+    title: Optional[str] = Field(
+        default=None, description="Stream title"
+    )  # <-- ADD THIS LINE
+    viewer_count: Optional[int] = Field(
+        default=None, ge=0, description="Current viewer count"
+    )
+    status: StreamStatus = Field(
+        default=StreamStatus.UNKNOWN, description="Current stream status"
+    )
     url_type: UrlType = Field(default=UrlType.UNKNOWN, description="Type of URL")
-    last_checked: Optional[datetime] = Field(default=None, description="Last time stream was checked")
+    last_checked: Optional[datetime] = Field(
+        default=None, description="Last time stream was checked"
+    )
 
-    @field_validator('url')
+    @field_validator("url")
     @classmethod
     def validate_url_field(cls, v: str) -> str:
         """Validate URL format with comprehensive security checks."""
@@ -149,7 +166,7 @@ class StreamInfo(BaseModel):
 
             return url
 
-    @field_validator('alias')
+    @field_validator("alias")
     @classmethod
     def validate_alias_field(cls, v: str) -> str:
         """Validate alias format with security checks."""
@@ -164,7 +181,7 @@ class StreamInfo(BaseModel):
                 raise ValueError("Alias cannot be empty")
             return v.strip()
 
-    @field_validator('username')
+    @field_validator("username")
     @classmethod
     def validate_username_field(cls, v: str) -> str:
         """Validate username format with security checks."""
@@ -177,7 +194,7 @@ class StreamInfo(BaseModel):
             # Fallback validation
             return v.strip() if v else "unknown_stream"
 
-    @field_validator('category')
+    @field_validator("category")
     @classmethod
     def validate_category_field(cls, v: str) -> str:
         """Validate category format with security checks."""
@@ -190,7 +207,7 @@ class StreamInfo(BaseModel):
             # Fallback validation
             return v.strip() if v else "N/A"
 
-    @field_validator('viewer_count')
+    @field_validator("viewer_count")
     @classmethod
     def validate_viewer_count_field(cls, v: Optional[int]) -> Optional[int]:
         """Validate viewer count."""
@@ -205,7 +222,7 @@ class StreamInfo(BaseModel):
                 raise ValueError("Viewer count cannot be negative")
             return v
 
-    @field_validator('viewer_count')
+    @field_validator("viewer_count")
     @classmethod
     def validate_viewer_count(cls, v: Optional[int]) -> Optional[int]:
         """Validate viewer count is non-negative."""
@@ -215,53 +232,12 @@ class StreamInfo(BaseModel):
 
     def to_dict(self) -> Dict[str, Any]:
         """Convert to dictionary format for JSON serialization (backward compatibility)."""
-        return self.model_dump(mode='json')
+        return self.model_dump(mode="json")
 
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "StreamInfo":
-        """Create StreamInfo from dictionary data with comprehensive validation and migration support."""
-        # Use comprehensive validation if available, but be lenient for migration
-        if VALIDATORS_AVAILABLE:
-            try:
-                from .validators import validate_and_sanitize_stream_data
-                # Try with strict=False for migration compatibility
-                data_copy = data.copy()
-                if 'url' in data_copy:
-                    from .validators import validate_url
-                    try:
-                        is_valid, sanitized_url, metadata = validate_url(data_copy['url'], strict=False)
-                        data_copy['url'] = sanitized_url
-                        data_copy.setdefault('platform', metadata.get('platform', 'Unknown'))
-                        data_copy.setdefault('username', metadata.get('username', 'unknown_stream'))
-                    except:
-                        pass  # Fall through to legacy migration
-
-                sanitized_data = validate_and_sanitize_stream_data(data_copy)
-                return cls.model_validate(sanitized_data)
-            except (ValidationError, SecurityError) as e:
-                # Log security issues and continue with legacy migration
-                import logging
-                logger = logging.getLogger(__name__)
-                logger.debug(f"Stream data validation failed, using legacy migration: {e}")
-                # Fall through to legacy migration
-
-        # Handle legacy data migration
-        migrated_data = cls._migrate_legacy_data(data)
-
-        try:
-            return cls.model_validate(migrated_data)
-        except Exception as e:
-            # Fallback for severely malformed data
-            return cls(
-                url=data.get("url", "https://example.com/unknown"),
-                alias=data.get("alias", "Unnamed Stream"),
-                platform=data.get("platform", "Unknown"),
-                username=data.get("username", "unknown_stream"),
-                category=data.get("category", "N/A"),
-                viewer_count=data.get("viewer_count"),
-                status=StreamStatus.UNKNOWN,
-                url_type=UrlType.UNKNOWN,
-            )
+        """Create StreamInfo from dictionary data, relying on Pydantic's validation."""
+        return cls.model_validate(data)
 
     @classmethod
     def _migrate_legacy_data(cls, data: Dict[str, Any]) -> Dict[str, Any]:
@@ -284,7 +260,9 @@ class StreamInfo(BaseModel):
         # Handle datetime strings
         if "last_checked" in migrated and isinstance(migrated["last_checked"], str):
             try:
-                migrated["last_checked"] = datetime.fromisoformat(migrated["last_checked"])
+                migrated["last_checked"] = datetime.fromisoformat(
+                    migrated["last_checked"]
+                )
             except ValueError:
                 migrated["last_checked"] = None
 
@@ -311,20 +289,34 @@ class PlaybackSession(BaseModel):
 
     model_config = ConfigDict(
         validate_assignment=True,
-        extra='forbid',
-        arbitrary_types_allowed=True  # For subprocess.Popen
+        extra="forbid",
+        arbitrary_types_allowed=True,  # For subprocess.Popen
     )
 
     current_stream: StreamInfo = Field(..., description="Currently playing stream")
-    current_quality: str = Field(..., min_length=1, description="Current playback quality")
-    all_live_streams: List[StreamInfo] = Field(..., min_items=1, description="All available live streams")
-    player_process: Optional[subprocess.Popen] = Field(default=None, exclude=True, description="Active player process")
-    current_index: int = Field(default=0, ge=0, description="Index of current stream in the list")
-    user_intent_direction: int = Field(default=0, ge=-1, le=1, description="User navigation intent")
-    session_start_time: datetime = Field(default_factory=datetime.now, description="When the session started")
-    total_streams_played: int = Field(default=1, ge=1, description="Total number of streams played in this session")
+    current_quality: str = Field(
+        ..., min_length=1, description="Current playback quality"
+    )
+    all_live_streams: List[StreamInfo] = Field(
+        ..., min_length=1, description="All available live streams"
+    )
+    player_process: Optional[subprocess.Popen] = Field(
+        default=None, exclude=True, description="Active player process"
+    )
+    current_index: int = Field(
+        default=0, ge=0, description="Index of current stream in the list"
+    )
+    user_intent_direction: int = Field(
+        default=0, ge=-1, le=1, description="User navigation intent"
+    )
+    session_start_time: datetime = Field(
+        default_factory=datetime.now, description="When the session started"
+    )
+    total_streams_played: int = Field(
+        default=1, ge=1, description="Total number of streams played in this session"
+    )
 
-    @field_validator('current_quality')
+    @field_validator("current_quality")
     @classmethod
     def validate_quality(cls, v: str) -> str:
         """Validate quality string."""
@@ -332,7 +324,7 @@ class PlaybackSession(BaseModel):
             raise ValueError("Quality cannot be empty")
         return v.strip()
 
-    @field_validator('all_live_streams')
+    @field_validator("all_live_streams")
     @classmethod
     def validate_streams_list(cls, v: List[StreamInfo]) -> List[StreamInfo]:
         """Validate streams list is not empty."""
@@ -340,8 +332,8 @@ class PlaybackSession(BaseModel):
             raise ValueError("Must have at least one live stream")
         return v
 
-    @model_validator(mode='after')
-    def validate_current_stream_in_list(self) -> 'PlaybackSession':
+    @model_validator(mode="after")
+    def validate_current_stream_in_list(self) -> "PlaybackSession":
         """Ensure current stream is in the live streams list."""
         # Find current stream by URL to avoid object comparison issues
         found_index = None
@@ -352,12 +344,12 @@ class PlaybackSession(BaseModel):
 
         if found_index is not None:
             # Update current_index to match the stream position
-            object.__setattr__(self, 'current_index', found_index)
+            object.__setattr__(self, "current_index", found_index)
         else:
             # Current stream not found, add it to the list
             new_streams = [self.current_stream] + list(self.all_live_streams)
-            object.__setattr__(self, 'all_live_streams', new_streams)
-            object.__setattr__(self, 'current_index', 0)
+            object.__setattr__(self, "all_live_streams", new_streams)
+            object.__setattr__(self, "current_index", 0)
 
         return self
 
@@ -392,16 +384,20 @@ class StreamMetadata(BaseModel):
     model_config = ConfigDict(
         str_strip_whitespace=True,
         validate_assignment=True,
-        extra='allow'  # Allow extra fields for raw_metadata
+        extra="allow",  # Allow extra fields for raw_metadata
     )
 
     title: Optional[str] = Field(default=None, description="Stream title")
     author: Optional[str] = Field(default=None, description="Stream author/channel")
     category: Optional[str] = Field(default=None, description="Stream category/game")
-    viewer_count: Optional[int] = Field(default=None, ge=0, description="Current viewer count")
-    raw_metadata: Dict[str, Any] = Field(default_factory=dict, description="Raw metadata from streamlink")
+    viewer_count: Optional[int] = Field(
+        default=None, ge=0, description="Current viewer count"
+    )
+    raw_metadata: Dict[str, Any] = Field(
+        default_factory=dict, description="Raw metadata from streamlink"
+    )
 
-    @field_validator('viewer_count')
+    @field_validator("viewer_count")
     @classmethod
     def validate_viewer_count(cls, v: Optional[int]) -> Optional[int]:
         """Validate viewer count is non-negative."""
@@ -441,13 +437,15 @@ class ConfigSection(BaseModel):
     """Represents a configuration section with typed access and validation."""
 
     model_config = ConfigDict(
-        str_strip_whitespace=True,
-        validate_assignment=True,
-        extra='allow'
+        str_strip_whitespace=True, validate_assignment=True, extra="allow"
     )
 
-    section_name: str = Field(..., min_length=1, description="Configuration section name")
-    values: Dict[str, str] = Field(default_factory=dict, description="Configuration key-value pairs")
+    section_name: str = Field(
+        ..., min_length=1, description="Configuration section name"
+    )
+    values: Dict[str, str] = Field(
+        default_factory=dict, description="Configuration key-value pairs"
+    )
 
     def get_str(self, key: str, default: str = "") -> str:
         """Get string value with default."""
@@ -477,58 +475,111 @@ class AppConfig(BaseModel):
     """Complete application configuration with validation."""
 
     model_config = ConfigDict(
-        validate_assignment=True,
-        extra='forbid',
-        str_strip_whitespace=True
+        validate_assignment=True, extra="forbid", str_strip_whitespace=True
     )
 
     # Core settings
-    config_file_path: Optional[Path] = Field(default=None, description="Path to configuration file")
+    config_file_path: Optional[Path] = Field(
+        default=None, description="Path to configuration file"
+    )
 
     # Player settings
-    player_command: str = Field(default="mpv", min_length=1, description="Media player command")
-    player_args: List[str] = Field(default_factory=list, description="Additional player arguments")
+    player_command: str = Field(
+        default="mpv", min_length=1, description="Media player command"
+    )
+    player_args: List[str] = Field(
+        default_factory=list, description="Additional player arguments"
+    )
     default_quality: str = Field(default="best", description="Default stream quality")
 
     # Stream checking settings
-    max_workers_liveness: int = Field(default=10, ge=1, le=50, description="Max concurrent liveness checks")
-    max_workers_metadata: int = Field(default=5, ge=1, le=20, description="Max concurrent metadata fetches")
-    streamlink_timeout_liveness: int = Field(default=10, ge=1, le=60, description="Streamlink timeout for liveness checks")
-    streamlink_timeout_metadata: int = Field(default=15, ge=1, le=120, description="Streamlink timeout for metadata")
+    max_workers_liveness: int = Field(
+        default=10, ge=1, le=50, description="Max concurrent liveness checks"
+    )
+    max_workers_metadata: int = Field(
+        default=5, ge=1, le=20, description="Max concurrent metadata fetches"
+    )
+    streamlink_timeout_liveness: int = Field(
+        default=10, ge=1, le=60, description="Streamlink timeout for liveness checks"
+    )
+    streamlink_timeout_metadata: int = Field(
+        default=15, ge=1, le=120, description="Streamlink timeout for metadata"
+    )
 
     # Cache settings
-    cache_enabled: bool = Field(default=True, description="Enable stream status caching")
-    cache_ttl_seconds: int = Field(default=300, ge=60, le=3600, description="Cache TTL in seconds")
-    cache_auto_cleanup: bool = Field(default=True, description="Enable automatic cache cleanup")
-    cache_cleanup_interval: int = Field(default=600, ge=300, le=7200, description="Cache cleanup interval")
+    cache_enabled: bool = Field(
+        default=True, description="Enable stream status caching"
+    )
+    cache_ttl_seconds: int = Field(
+        default=300, ge=60, le=3600, description="Cache TTL in seconds"
+    )
+    cache_auto_cleanup: bool = Field(
+        default=True, description="Enable automatic cache cleanup"
+    )
+    cache_cleanup_interval: int = Field(
+        default=600, ge=300, le=7200, description="Cache cleanup interval"
+    )
 
     # Rate limiting settings
     rate_limit_enabled: bool = Field(default=True, description="Enable rate limiting")
-    rate_limit_global_requests_per_second: float = Field(default=8.0, gt=0, le=100, description="Global rate limit")
-    rate_limit_global_burst_capacity: int = Field(default=15, ge=1, le=100, description="Global burst capacity")
+    rate_limit_global_requests_per_second: float = Field(
+        default=8.0, gt=0, le=100, description="Global rate limit"
+    )
+    rate_limit_global_burst_capacity: int = Field(
+        default=15, ge=1, le=100, description="Global burst capacity"
+    )
 
     # Resilience settings
-    retry_max_attempts: int = Field(default=3, ge=1, le=10, description="Maximum retry attempts")
-    retry_base_delay: float = Field(default=1.0, gt=0, le=10, description="Base retry delay in seconds")
-    circuit_breaker_enabled: bool = Field(default=True, description="Enable circuit breaker")
-    circuit_breaker_failure_threshold: int = Field(default=5, ge=1, le=20, description="Circuit breaker failure threshold")
-    circuit_breaker_recovery_timeout: float = Field(default=60.0, gt=0, le=600, description="Circuit breaker recovery timeout")
+    retry_max_attempts: int = Field(
+        default=3, ge=1, le=10, description="Maximum retry attempts"
+    )
+    retry_base_delay: float = Field(
+        default=1.0, gt=0, le=10, description="Base retry delay in seconds"
+    )
+    circuit_breaker_enabled: bool = Field(
+        default=True, description="Enable circuit breaker"
+    )
+    circuit_breaker_failure_threshold: int = Field(
+        default=5, ge=1, le=20, description="Circuit breaker failure threshold"
+    )
+    circuit_breaker_recovery_timeout: float = Field(
+        default=60.0, gt=0, le=600, description="Circuit breaker recovery timeout"
+    )
 
     # UI settings
-    refresh_interval: float = Field(default=2.0, gt=0.1, le=10, description="UI refresh interval in seconds")
-    show_offline_streams: bool = Field(default=False, description="Show offline streams in UI")
+    refresh_interval: float = Field(
+        default=2.0, gt=0.1, le=10, description="UI refresh interval in seconds"
+    )
+    show_offline_streams: bool = Field(
+        default=False, description="Show offline streams in UI"
+    )
 
     # Pagination settings
-    streams_per_page: int = Field(default=20, ge=5, le=100, description="Number of streams per page")
-    enable_search: bool = Field(default=True, description="Enable stream search functionality")
-    enable_category_filter: bool = Field(default=True, description="Enable category filtering")
-    enable_platform_filter: bool = Field(default=True, description="Enable platform filtering")
+    streams_per_page: int = Field(
+        default=20, ge=5, le=100, description="Number of streams per page"
+    )
+    enable_search: bool = Field(
+        default=True, description="Enable stream search functionality"
+    )
+    enable_category_filter: bool = Field(
+        default=True, description="Enable category filtering"
+    )
+    enable_platform_filter: bool = Field(
+        default=True, description="Enable platform filtering"
+    )
 
     # Memory optimization settings
-    metadata_cache_size: int = Field(default=100, ge=10, le=1000, description="Maximum cached stream metadata entries")
-    lazy_load_threshold: int = Field(default=50, ge=20, le=500, description="Stream count threshold for lazy loading")
+    metadata_cache_size: int = Field(
+        default=100,
+        ge=10,
+        le=1000,
+        description="Maximum cached stream metadata entries",
+    )
+    lazy_load_threshold: int = Field(
+        default=50, ge=20, le=500, description="Stream count threshold for lazy loading"
+    )
 
-    @field_validator('player_command')
+    @field_validator("player_command")
     @classmethod
     def validate_player_command(cls, v: str) -> str:
         """Validate player command is not empty."""
@@ -536,7 +587,7 @@ class AppConfig(BaseModel):
             raise ValueError("Player command cannot be empty")
         return v.strip()
 
-    @field_validator('config_file_path')
+    @field_validator("config_file_path")
     @classmethod
     def validate_config_path(cls, v: Optional[Path]) -> Optional[Path]:
         """Validate config file path if provided."""
@@ -546,16 +597,19 @@ class AppConfig(BaseModel):
             # Don't validate existence here as file might not exist yet
         return v
 
-    @model_validator(mode='after')
-    def validate_worker_limits(self) -> 'AppConfig':
+    @model_validator(mode="after")
+    def validate_worker_limits(self) -> "AppConfig":
         """Ensure worker limits are reasonable."""
         if self.max_workers_metadata > self.max_workers_liveness:
             # Metadata workers should not exceed liveness workers
-            self.max_workers_metadata = min(self.max_workers_metadata, self.max_workers_liveness)
+            self.max_workers_metadata = min(
+                self.max_workers_metadata, self.max_workers_liveness
+            )
         return self
 
 
 # --- Data Serialization and Migration Utilities ---
+
 
 class ModelMigrator:
     """Handles migration of legacy data formats to current Pydantic models."""
@@ -588,10 +642,12 @@ class ModelMigrator:
             return AppConfig()
 
     @classmethod
-    def validate_and_migrate_json(cls, json_data: Dict[str, Any], model_class: type) -> Any:
+    def validate_and_migrate_json(
+        cls, json_data: Dict[str, Any], model_class: type
+    ) -> Any:
         """Generic validation and migration for any model class."""
         try:
-            if hasattr(model_class, 'from_dict'):
+            if hasattr(model_class, "from_dict"):
                 return model_class.from_dict(json_data)
             else:
                 return model_class.model_validate(json_data)
@@ -601,12 +657,14 @@ class ModelMigrator:
             try:
                 return model_class()
             except Exception:
-                raise ValueError(f"Cannot create default instance of {model_class.__name__}")
+                raise ValueError(
+                    f"Cannot create default instance of {model_class.__name__}"
+                )
 
 
 def serialize_to_json(obj: BaseModel) -> Dict[str, Any]:
     """Serialize a Pydantic model to JSON-compatible dictionary."""
-    return obj.model_dump(mode='json', exclude_none=True)
+    return obj.model_dump(mode="json", exclude_none=True)
 
 
 def deserialize_from_json(data: Dict[str, Any], model_class: type) -> Any:
@@ -616,18 +674,20 @@ def deserialize_from_json(data: Dict[str, Any], model_class: type) -> Any:
 
 # --- Backward Compatibility Aliases ---
 
+
 # For existing code that might still use the old dataclass-style access
 def create_stream_info(url: str, alias: str, **kwargs) -> StreamInfo:
     """Create StreamInfo with backward-compatible interface."""
     return StreamInfo(url=url, alias=alias, **kwargs)
 
 
-def create_playback_session(current_stream: StreamInfo, quality: str,
-                          all_streams: List[StreamInfo], **kwargs) -> PlaybackSession:
+def create_playback_session(
+    current_stream: StreamInfo, quality: str, all_streams: List[StreamInfo], **kwargs
+) -> PlaybackSession:
     """Create PlaybackSession with backward-compatible interface."""
     return PlaybackSession(
         current_stream=current_stream,
         current_quality=quality,
         all_live_streams=all_streams,
-        **kwargs
+        **kwargs,
     )

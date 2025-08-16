@@ -1,6 +1,7 @@
 """
 Common test fixtures and configuration for StreamWatch CLI tests.
 """
+
 import json
 import tempfile
 from pathlib import Path

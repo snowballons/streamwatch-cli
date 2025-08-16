@@ -20,13 +20,15 @@ from .styles import STREAM_DISPLAY_COLORS, console, dialog_style
 # Import security utilities
 try:
     from ..ui_security import safe_format_for_display, safe_format_stream_info
+
     SECURITY_AVAILABLE = True
 except ImportError:
     SECURITY_AVAILABLE = False
 
 # Import pagination utilities
 try:
-    from .pagination import PaginationInfo, FilterCriteria
+    from .pagination import FilterCriteria, PaginationInfo
+
     PAGINATION_AVAILABLE = True
 except ImportError:
     PAGINATION_AVAILABLE = False
@@ -76,9 +78,13 @@ def display_main_menu(live_streams_count: int) -> None:
     )
     # --- END NEW ---
 
-    text.append("  [", style="dimmed").append("P", style="menu_key").append(
-        "]lay Last Stream\n", style="menu_option"
-    ) if config.get_last_played_url() else None
+    (
+        text.append("  [", style="dimmed")
+        .append("P", style="menu_key")
+        .append("]lay Last Stream\n", style="menu_option")
+        if config.get_last_played_url()
+        else None
+    )
     text.append("  [", style="dimmed").append("F", style="menu_key").append(
         "]      - Refresh live stream list\n", style="menu_option"
     )
@@ -118,11 +124,15 @@ def format_stream_for_display(
         else:
             # Fallback: basic string conversion
             safe_info = {
-                'alias': str(stream_info.get("alias", "Unknown Stream"))[:50],
-                'platform': str(stream_info.get("platform", "Unknown"))[:20],
-                'username': str(stream_info.get("username", "unknown"))[:30],
-                'category': str(stream_info.get("category_keywords", stream_info.get("category", "N/A")))[:30],
-                'viewer_count': stream_info.get("viewer_count", "N/A")
+                "alias": str(stream_info.get("alias", "Unknown Stream"))[:50],
+                "platform": str(stream_info.get("platform", "Unknown"))[:20],
+                "username": str(stream_info.get("username", "unknown"))[:30],
+                "category": str(
+                    stream_info.get(
+                        "category_keywords", stream_info.get("category", "N/A")
+                    )
+                )[:30],
+                "viewer_count": stream_info.get("viewer_count", "N/A"),
             }
 
         if index is not None:
@@ -135,7 +145,7 @@ def format_stream_for_display(
 
         # Safe viewer count display
         if SECURITY_AVAILABLE:
-            viewer_display = safe_info.get('viewer_count', 'N/A')
+            viewer_display = safe_info.get("viewer_count", "N/A")
         else:
             viewer_count = stream_info.get("viewer_count")
             if viewer_count is not None:
@@ -156,7 +166,9 @@ def format_stream_for_display(
         if not description:
             description = "N/A"
         # Safely format and append the chosen description
-        safe_description = safe_format_for_display(description, 60) # Truncate long titles
+        safe_description = safe_format_for_display(
+            description, 60
+        )  # Truncate long titles
         text.append(f" - {safe_description}", style=colors["category_color"])
     elif isinstance(stream_info, str):
         if index is not None:
@@ -210,10 +222,10 @@ def display_urls_for_removal(
 
 def display_paginated_stream_list(
     stream_info_list: List[Dict[str, Any]],
-    pagination_info: 'PaginationInfo',
+    pagination_info: "PaginationInfo",
     title: str = "--- Streams ---",
     show_pagination_controls: bool = True,
-    clear_screen_first: bool = False
+    clear_screen_first: bool = False,
 ) -> None:
     """
     Display a paginated list of streams with pagination information.
@@ -291,7 +303,9 @@ def display_pagination_help() -> None:
 
 def display_search_prompt() -> None:
     """Display search prompt information."""
-    console.print("🔍 Enter search term (searches alias, username, and category):", style="info")
+    console.print(
+        "🔍 Enter search term (searches alias, username, and category):", style="info"
+    )
     console.print("   Leave empty to clear search filter", style="dimmed")
 
 
@@ -307,7 +321,9 @@ def display_category_filter_prompt(available_categories: List[str]) -> None:
         for i, category in enumerate(available_categories[:10]):  # Show max 10
             console.print(f"   {i+1}. {category}", style="dimmed")
         if len(available_categories) > 10:
-            console.print(f"   ... and {len(available_categories) - 10} more", style="dimmed")
+            console.print(
+                f"   ... and {len(available_categories) - 10} more", style="dimmed"
+            )
     else:
         console.print("   No categories available", style="dimmed")
 
@@ -331,7 +347,7 @@ def display_platform_filter_prompt(available_platforms: List[str]) -> None:
     console.print("Enter platform name (or leave empty to clear filter):", style="info")
 
 
-def _display_pagination_controls(pagination_info: 'PaginationInfo') -> None:
+def _display_pagination_controls(pagination_info: "PaginationInfo") -> None:
     """
     Display pagination controls and information.
 
@@ -342,7 +358,7 @@ def _display_pagination_controls(pagination_info: 'PaginationInfo') -> None:
     console.print(
         f"Showing {pagination_info.start_index + 1}-{pagination_info.end_index} "
         f"of {pagination_info.total_items} streams",
-        style="dimmed"
+        style="dimmed",
     )
 
     # Show available controls

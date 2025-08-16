@@ -11,10 +11,10 @@ import threading
 from contextlib import contextmanager
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple, Any
+from typing import Any, Dict, List, Optional, Tuple
 
 from . import config
-from .models import StreamInfo, StreamStatus, AppConfig
+from .models import AppConfig, StreamInfo, StreamStatus
 
 logger = logging.getLogger(config.APP_NAME + ".database")
 
@@ -108,79 +108,88 @@ INSERT OR IGNORE INTO platforms (name, base_url, rate_limit_requests_per_second,
 
 class DatabaseError(Exception):
     """Base exception for database operations."""
+
     pass
 
 
 class DatabaseConnectionError(DatabaseError):
     """Exception raised when database connection fails."""
+
     pass
 
 
 class DatabaseMigrationError(DatabaseError):
     """Exception raised during database migrations."""
+
     pass
 
 
 class StreamDatabase:
     """
     Thread-safe SQLite database interface for StreamWatch.
-    
+
     Provides ACID-compliant operations for streams, status history,
     configuration, and user preferences.
     """
-    
+
     def __init__(self, db_path: Optional[Path] = None):
         """
         Initialize database connection.
-        
+
         Args:
             db_path: Path to SQLite database file. If None, uses default location.
         """
         if db_path is None:
             db_path = self._get_default_db_path()
-        
+
         self.db_path = Path(db_path)
         self._local = threading.local()
-        
+
         # Ensure database directory exists
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
-        
+
         # Initialize database schema
         self._initialize_database()
-        
+
         logger.info(f"Database initialized at: {self.db_path}")
-    
+
     def _get_default_db_path(self) -> Path:
         """Get default database path in user config directory."""
         config_dir = Path.home() / ".config" / "streamwatch"
         return config_dir / "streamwatch.db"
-    
+
     @property
     def connection(self) -> sqlite3.Connection:
         """Get thread-local database connection."""
-        if not hasattr(self._local, 'connection'):
+        if not hasattr(self._local, "connection"):
             try:
                 conn = sqlite3.connect(
                     str(self.db_path),
                     timeout=30.0,  # 30 second timeout
-                    check_same_thread=False
+                    check_same_thread=False,
                 )
-                
+
                 # Configure connection
                 conn.row_factory = sqlite3.Row  # Enable dict-like access
-                conn.execute("PRAGMA foreign_keys = ON")  # Enable foreign key constraints
-                conn.execute("PRAGMA journal_mode = WAL")  # Write-Ahead Logging for better concurrency
-                conn.execute("PRAGMA synchronous = NORMAL")  # Balance safety and performance
+                conn.execute(
+                    "PRAGMA foreign_keys = ON"
+                )  # Enable foreign key constraints
+                conn.execute(
+                    "PRAGMA journal_mode = WAL"
+                )  # Write-Ahead Logging for better concurrency
+                conn.execute(
+                    "PRAGMA synchronous = NORMAL"
+                )  # Balance safety and performance
                 conn.execute("PRAGMA temp_store = MEMORY")  # Use memory for temp tables
                 conn.execute("PRAGMA cache_size = -64000")  # 64MB cache
-                
+
                 self._local.connection = conn
-                
+
             except sqlite3.Error as e:
                 raise DatabaseConnectionError(f"Failed to connect to database: {e}")
-        
+
         return self._local.connection
-    
+
     @contextmanager
     def transaction(self):
         """Context manager for database transactions."""
@@ -193,24 +202,24 @@ class StreamDatabase:
             conn.rollback()
             logger.error(f"Transaction rolled back: {e}")
             raise
-    
+
     def _initialize_database(self) -> None:
         """Initialize database schema and default data."""
         try:
             with self.transaction() as conn:
                 # Execute schema
                 conn.executescript(SCHEMA_SQL)
-                
+
                 # Check/update schema version
                 current_version = self._get_schema_version()
                 if current_version < SCHEMA_VERSION:
                     self._migrate_schema(current_version, SCHEMA_VERSION)
-                
+
                 logger.debug("Database schema initialized successfully")
-                
+
         except sqlite3.Error as e:
             raise DatabaseError(f"Failed to initialize database: {e}")
-    
+
     def _get_schema_version(self) -> int:
         """Get current database schema version."""
         try:
@@ -219,51 +228,55 @@ class StreamDatabase:
             return result[0] if result[0] is not None else 0
         except sqlite3.Error:
             return 0
-    
+
     def _migrate_schema(self, from_version: int, to_version: int) -> None:
         """Migrate database schema from one version to another."""
         logger.info(f"Migrating database schema from v{from_version} to v{to_version}")
-        
+
         try:
             with self.transaction() as conn:
                 # Record migration
                 conn.execute(
                     "INSERT INTO schema_info (version, description) VALUES (?, ?)",
-                    (to_version, f"Migration from v{from_version} to v{to_version}")
+                    (to_version, f"Migration from v{from_version} to v{to_version}"),
                 )
-                
-                logger.info(f"Database migration completed: v{from_version} -> v{to_version}")
-                
+
+                logger.info(
+                    f"Database migration completed: v{from_version} -> v{to_version}"
+                )
+
         except sqlite3.Error as e:
             raise DatabaseMigrationError(f"Schema migration failed: {e}")
-    
+
     def close(self) -> None:
         """Close database connection."""
-        if hasattr(self._local, 'connection'):
+        if hasattr(self._local, "connection"):
             self._local.connection.close()
-            delattr(self._local, 'connection')
-    
+            delattr(self._local, "connection")
+
     def get_database_info(self) -> Dict[str, Any]:
         """Get database information for debugging."""
         try:
             cursor = self.connection.execute("PRAGMA database_list")
             db_info = cursor.fetchall()
-            
+
             cursor = self.connection.execute("SELECT COUNT(*) FROM streams")
             stream_count = cursor.fetchone()[0]
-            
+
             cursor = self.connection.execute("SELECT COUNT(*) FROM stream_checks")
             check_count = cursor.fetchone()[0]
-            
+
             return {
                 "database_path": str(self.db_path),
-                "database_size_bytes": self.db_path.stat().st_size if self.db_path.exists() else 0,
+                "database_size_bytes": (
+                    self.db_path.stat().st_size if self.db_path.exists() else 0
+                ),
                 "schema_version": self._get_schema_version(),
                 "stream_count": stream_count,
                 "check_count": check_count,
-                "database_info": [dict(row) for row in db_info]
+                "database_info": [dict(row) for row in db_info],
             }
-            
+
         except sqlite3.Error as e:
             logger.error(f"Failed to get database info: {e}")
             return {"error": str(e)}
@@ -283,17 +296,20 @@ class StreamDatabase:
                 platform_id = self._get_or_create_platform(stream.platform)
 
                 # Insert or update stream
-                conn.execute("""
+                conn.execute(
+                    """
                     INSERT OR REPLACE INTO streams
                     (url, alias, platform_id, username, category, last_modified, is_active)
                     VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP, TRUE)
-                """, (
-                    stream.url,
-                    stream.alias,
-                    platform_id,
-                    stream.username,
-                    stream.category
-                ))
+                """,
+                    (
+                        stream.url,
+                        stream.alias,
+                        platform_id,
+                        stream.username,
+                        stream.category,
+                    ),
+                )
 
                 logger.debug(f"Saved stream: {stream.alias} ({stream.url})")
 
@@ -336,29 +352,29 @@ class StreamDatabase:
             for row in rows:
                 # Parse status
                 status = StreamStatus.UNKNOWN
-                if row['status']:
+                if row["status"]:
                     try:
-                        status = StreamStatus(row['status'])
+                        status = StreamStatus(row["status"])
                     except ValueError:
                         status = StreamStatus.UNKNOWN
 
                 # Parse last_checked
                 last_checked = None
-                if row['checked_at']:
+                if row["checked_at"]:
                     try:
-                        last_checked = datetime.fromisoformat(row['checked_at'])
+                        last_checked = datetime.fromisoformat(row["checked_at"])
                     except ValueError:
                         pass
 
                 stream = StreamInfo(
-                    url=row['url'],
-                    alias=row['alias'],
-                    platform=row['platform'] or 'Unknown',
-                    username=row['username'] or 'unknown_stream',
-                    category=row['category'] or 'N/A',
-                    viewer_count=row['viewer_count'],
+                    url=row["url"],
+                    alias=row["alias"],
+                    platform=row["platform"] or "Unknown",
+                    username=row["username"] or "unknown_stream",
+                    category=row["category"] or "N/A",
+                    viewer_count=row["viewer_count"],
                     status=status,
-                    last_checked=last_checked
+                    last_checked=last_checked,
                 )
 
                 streams.append(stream)
@@ -380,7 +396,8 @@ class StreamDatabase:
             StreamInfo object or None if not found
         """
         try:
-            cursor = self.connection.execute("""
+            cursor = self.connection.execute(
+                """
                 SELECT s.url, s.alias, p.name as platform, s.username, s.category,
                        sc.status, sc.viewer_count, sc.checked_at
                 FROM streams s
@@ -391,7 +408,9 @@ class StreamDatabase:
                     FROM stream_checks
                 ) sc ON s.url = sc.stream_url AND sc.rn = 1
                 WHERE s.url = ? AND s.is_active = TRUE
-            """, (url,))
+            """,
+                (url,),
+            )
 
             row = cursor.fetchone()
             if not row:
@@ -399,28 +418,28 @@ class StreamDatabase:
 
             # Parse status and last_checked (same logic as load_streams)
             status = StreamStatus.UNKNOWN
-            if row['status']:
+            if row["status"]:
                 try:
-                    status = StreamStatus(row['status'])
+                    status = StreamStatus(row["status"])
                 except ValueError:
                     status = StreamStatus.UNKNOWN
 
             last_checked = None
-            if row['checked_at']:
+            if row["checked_at"]:
                 try:
-                    last_checked = datetime.fromisoformat(row['checked_at'])
+                    last_checked = datetime.fromisoformat(row["checked_at"])
                 except ValueError:
                     pass
 
             return StreamInfo(
-                url=row['url'],
-                alias=row['alias'],
-                platform=row['platform'] or 'Unknown',
-                username=row['username'] or 'unknown_stream',
-                category=row['category'] or 'N/A',
-                viewer_count=row['viewer_count'],
+                url=row["url"],
+                alias=row["alias"],
+                platform=row["platform"] or "Unknown",
+                username=row["username"] or "unknown_stream",
+                category=row["category"] or "N/A",
+                viewer_count=row["viewer_count"],
                 status=status,
-                last_checked=last_checked
+                last_checked=last_checked,
             )
 
         except sqlite3.Error as e:
@@ -428,26 +447,30 @@ class StreamDatabase:
 
     def delete_stream(self, url: str) -> bool:
         """
-        Delete a stream from the database.
+        Marks an active stream as inactive in the database.
 
         Args:
-            url: Stream URL to delete
+            url: Stream URL to deactivate.
 
         Returns:
-            True if stream was deleted, False if not found
+            True if an active stream was successfully marked as inactive, False otherwise.
         """
         try:
             with self.transaction() as conn:
-                cursor = conn.execute("UPDATE streams SET is_active = FALSE WHERE url = ?", (url,))
-                deleted = cursor.rowcount > 0
+                # Only update the row if it is currently active
+                cursor = conn.execute(
+                    "UPDATE streams SET is_active = FALSE WHERE url = ? AND is_active = TRUE",
+                    (url,),
+                )
+                deactivated = cursor.rowcount > 0
 
-                if deleted:
-                    logger.info(f"Deleted stream: {url}")
+                if deactivated:
+                    logger.info(f"Deactivated stream: {url}")
 
-                return deleted
+                return deactivated
 
         except sqlite3.Error as e:
-            raise DatabaseError(f"Failed to delete stream: {e}")
+            raise DatabaseError(f"Failed to deactivate stream: {e}")
 
     def _get_or_create_platform(self, platform_name: str) -> int:
         """
@@ -461,7 +484,9 @@ class StreamDatabase:
         """
         try:
             # Try to get existing platform
-            cursor = self.connection.execute("SELECT id FROM platforms WHERE name = ?", (platform_name,))
+            cursor = self.connection.execute(
+                "SELECT id FROM platforms WHERE name = ?", (platform_name,)
+            )
             row = cursor.fetchone()
 
             if row:
@@ -469,8 +494,7 @@ class StreamDatabase:
 
             # Create new platform
             cursor = self.connection.execute(
-                "INSERT INTO platforms (name) VALUES (?)",
-                (platform_name,)
+                "INSERT INTO platforms (name) VALUES (?)", (platform_name,)
             )
 
             return cursor.lastrowid
@@ -480,12 +504,16 @@ class StreamDatabase:
 
     # --- Stream Status Tracking Operations ---
 
-    def record_stream_check(self, url: str, status: StreamStatus,
-                          viewer_count: Optional[int] = None,
-                          title: Optional[str] = None,
-                          category: Optional[str] = None,
-                          response_time_ms: Optional[int] = None,
-                          error_message: Optional[str] = None) -> None:
+    def record_stream_check(
+        self,
+        url: str,
+        status: StreamStatus,
+        viewer_count: Optional[int] = None,
+        title: Optional[str] = None,
+        category: Optional[str] = None,
+        response_time_ms: Optional[int] = None,
+        error_message: Optional[str] = None,
+    ) -> None:
         """
         Record a stream status check result.
 
@@ -500,20 +528,23 @@ class StreamDatabase:
         """
         try:
             with self.transaction() as conn:
-                conn.execute("""
+                conn.execute(
+                    """
                     INSERT INTO stream_checks
                     (stream_url, status, viewer_count, title, category,
                      response_time_ms, error_message)
                     VALUES (?, ?, ?, ?, ?, ?, ?)
-                """, (
-                    url,
-                    status.value,
-                    viewer_count,
-                    title,
-                    category,
-                    response_time_ms,
-                    error_message
-                ))
+                """,
+                    (
+                        url,
+                        status.value,
+                        viewer_count,
+                        title,
+                        category,
+                        response_time_ms,
+                        error_message,
+                    ),
+                )
 
                 logger.debug(f"Recorded check for {url}: {status.value}")
 
@@ -532,13 +563,16 @@ class StreamDatabase:
             List of check records
         """
         try:
-            cursor = self.connection.execute("""
+            cursor = self.connection.execute(
+                """
                 SELECT status, viewer_count, title, category, checked_at,
                        response_time_ms, error_message
                 FROM stream_checks
-                WHERE stream_url = ? AND checked_at > datetime('now', '-{} days')
+                WHERE stream_url = ? AND checked_at > datetime('now', '-' || ? || ' days')
                 ORDER BY checked_at DESC
-            """.format(days), (url,))
+            """,
+                (url, str(days)),
+            )
 
             return [dict(row) for row in cursor.fetchall()]
 
@@ -553,7 +587,8 @@ class StreamDatabase:
             List of live StreamInfo objects
         """
         try:
-            cursor = self.connection.execute("""
+            cursor = self.connection.execute(
+                """
                 SELECT s.url, s.alias, p.name as platform, s.username, s.category,
                        sc.viewer_count, sc.checked_at
                 FROM streams s
@@ -566,26 +601,27 @@ class StreamDatabase:
                 ) sc ON s.url = sc.stream_url AND sc.rn = 1
                 WHERE s.is_active = TRUE
                 ORDER BY sc.viewer_count DESC NULLS LAST, s.alias
-            """)
+            """
+            )
 
             streams = []
             for row in cursor.fetchall():
                 last_checked = None
-                if row['checked_at']:
+                if row["checked_at"]:
                     try:
-                        last_checked = datetime.fromisoformat(row['checked_at'])
+                        last_checked = datetime.fromisoformat(row["checked_at"])
                     except ValueError:
                         pass
 
                 stream = StreamInfo(
-                    url=row['url'],
-                    alias=row['alias'],
-                    platform=row['platform'],
-                    username=row['username'] or 'unknown_stream',
-                    category=row['category'] or 'N/A',
-                    viewer_count=row['viewer_count'],
+                    url=row["url"],
+                    alias=row["alias"],
+                    platform=row["platform"],
+                    username=row["username"] or "unknown_stream",
+                    category=row["category"] or "N/A",
+                    viewer_count=row["viewer_count"],
                     status=StreamStatus.LIVE,
-                    last_checked=last_checked
+                    last_checked=last_checked,
                 )
                 streams.append(stream)
 
@@ -609,7 +645,8 @@ class StreamDatabase:
         try:
             search_pattern = f"%{query}%"
 
-            cursor = self.connection.execute("""
+            cursor = self.connection.execute(
+                """
                 SELECT s.url, s.alias, p.name as platform, s.username, s.category,
                        sc.status, sc.viewer_count, sc.checked_at
                 FROM streams s
@@ -630,34 +667,36 @@ class StreamDatabase:
                     sc.viewer_count DESC NULLS LAST,
                     s.alias
                 LIMIT ?
-            """, (search_pattern, search_pattern, search_pattern, search_pattern, limit))
+            """,
+                (search_pattern, search_pattern, search_pattern, search_pattern, limit),
+            )
 
             streams = []
             for row in cursor.fetchall():
                 # Parse status and last_checked (same logic as before)
                 status = StreamStatus.UNKNOWN
-                if row['status']:
+                if row["status"]:
                     try:
-                        status = StreamStatus(row['status'])
+                        status = StreamStatus(row["status"])
                     except ValueError:
                         status = StreamStatus.UNKNOWN
 
                 last_checked = None
-                if row['checked_at']:
+                if row["checked_at"]:
                     try:
-                        last_checked = datetime.fromisoformat(row['checked_at'])
+                        last_checked = datetime.fromisoformat(row["checked_at"])
                     except ValueError:
                         pass
 
                 stream = StreamInfo(
-                    url=row['url'],
-                    alias=row['alias'],
-                    platform=row['platform'] or 'Unknown',
-                    username=row['username'] or 'unknown_stream',
-                    category=row['category'] or 'N/A',
-                    viewer_count=row['viewer_count'],
+                    url=row["url"],
+                    alias=row["alias"],
+                    platform=row["platform"] or "Unknown",
+                    username=row["username"] or "unknown_stream",
+                    category=row["category"] or "N/A",
+                    viewer_count=row["viewer_count"],
                     status=status,
-                    last_checked=last_checked
+                    last_checked=last_checked,
                 )
                 streams.append(stream)
 
@@ -682,7 +721,8 @@ class StreamDatabase:
         """
         try:
             # Get basic stats
-            cursor = self.connection.execute("""
+            cursor = self.connection.execute(
+                """
                 SELECT
                     COUNT(*) as total_checks,
                     SUM(CASE WHEN status = 'live' THEN 1 ELSE 0 END) as live_checks,
@@ -690,40 +730,47 @@ class StreamDatabase:
                     MAX(CASE WHEN status = 'live' THEN viewer_count END) as peak_viewers,
                     AVG(response_time_ms) as avg_response_time
                 FROM stream_checks
-                WHERE stream_url = ? AND checked_at > datetime('now', '-{} days')
-            """.format(days), (url,))
+                WHERE stream_url = ? AND checked_at > datetime('now', '-' || ? || ' days')
+            """,
+                (url, str(days)),
+            )
 
             stats = dict(cursor.fetchone())
 
             # Calculate uptime percentage
             uptime_percent = 0.0
-            if stats['total_checks'] > 0:
-                uptime_percent = (stats['live_checks'] / stats['total_checks']) * 100
+            if stats["total_checks"] > 0:
+                uptime_percent = (stats["live_checks"] / stats["total_checks"]) * 100
 
             # Get hourly distribution
-            cursor = self.connection.execute("""
+            cursor = self.connection.execute(
+                """
                 SELECT
                     strftime('%H', checked_at) as hour,
                     COUNT(*) as checks,
                     SUM(CASE WHEN status = 'live' THEN 1 ELSE 0 END) as live_checks
                 FROM stream_checks
-                WHERE stream_url = ? AND checked_at > datetime('now', '-{} days')
+                WHERE stream_url = ? AND checked_at > datetime('now', '-' || ? || ' days')
                 GROUP BY strftime('%H', checked_at)
                 ORDER BY hour
-            """.format(days), (url,))
+            """,
+                (url, str(days)),
+            )
 
             hourly_data = [dict(row) for row in cursor.fetchall()]
 
             return {
                 "url": url,
                 "period_days": days,
-                "total_checks": stats['total_checks'] or 0,
-                "live_checks": stats['live_checks'] or 0,
+                "total_checks": stats["total_checks"] or 0,
+                "live_checks": stats["live_checks"] or 0,
                 "uptime_percent": round(uptime_percent, 2),
-                "avg_viewers": int(stats['avg_viewers']) if stats['avg_viewers'] else 0,
-                "peak_viewers": stats['peak_viewers'] or 0,
-                "avg_response_time_ms": int(stats['avg_response_time']) if stats['avg_response_time'] else 0,
-                "hourly_distribution": hourly_data
+                "avg_viewers": int(stats["avg_viewers"]) if stats["avg_viewers"] else 0,
+                "peak_viewers": stats["peak_viewers"] or 0,
+                "avg_response_time_ms": (
+                    int(stats["avg_response_time"]) if stats["avg_response_time"] else 0
+                ),
+                "hourly_distribution": hourly_data,
             }
 
         except sqlite3.Error as e:
@@ -737,7 +784,8 @@ class StreamDatabase:
             List of platform statistics
         """
         try:
-            cursor = self.connection.execute("""
+            cursor = self.connection.execute(
+                """
                 SELECT
                     p.name as platform,
                     COUNT(DISTINCT s.url) as total_streams,
@@ -753,7 +801,8 @@ class StreamDatabase:
                 GROUP BY p.name
                 HAVING total_streams > 0
                 ORDER BY total_streams DESC
-            """)
+            """
+            )
 
             return [dict(row) for row in cursor.fetchall()]
 
@@ -785,16 +834,20 @@ class StreamDatabase:
             elif isinstance(value, (dict, list)):
                 data_type = "json"
                 import json
+
                 value_str = json.dumps(value)
             else:
                 data_type = "string"
                 value_str = str(value)
 
             with self.transaction() as conn:
-                conn.execute("""
+                conn.execute(
+                    """
                     INSERT OR REPLACE INTO app_config (key, value, data_type, description, updated_at)
                     VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)
-                """, (key, value_str, data_type, description))
+                """,
+                    (key, value_str, data_type, description),
+                )
 
                 logger.debug(f"Saved config: {key} = {value}")
 
@@ -814,8 +867,7 @@ class StreamDatabase:
         """
         try:
             cursor = self.connection.execute(
-                "SELECT value, data_type FROM app_config WHERE key = ?",
-                (key,)
+                "SELECT value, data_type FROM app_config WHERE key = ?", (key,)
             )
 
             row = cursor.fetchone()
@@ -833,6 +885,7 @@ class StreamDatabase:
                 return float(value_str)
             elif data_type == "json":
                 import json
+
                 return json.loads(value_str)
             else:
                 return value_str
@@ -849,7 +902,9 @@ class StreamDatabase:
             Dictionary of all configuration values
         """
         try:
-            cursor = self.connection.execute("SELECT key, value, data_type FROM app_config")
+            cursor = self.connection.execute(
+                "SELECT key, value, data_type FROM app_config"
+            )
 
             config_dict = {}
             for row in cursor.fetchall():
@@ -865,6 +920,7 @@ class StreamDatabase:
                         config_dict[key] = float(value_str)
                     elif data_type == "json":
                         import json
+
                         config_dict[key] = json.loads(value_str)
                     else:
                         config_dict[key] = value_str

@@ -20,9 +20,10 @@ from .commands import (
 
 # Import pagination utilities
 try:
-    from .ui.pagination import get_stream_list_manager
+    from .ui.display import display_filter_summary, display_paginated_stream_list
     from .ui.input_handler import handle_pagination_command
-    from .ui.display import display_paginated_stream_list, display_filter_summary
+    from .ui.pagination import get_stream_list_manager
+
     PAGINATION_AVAILABLE = True
 except ImportError:
     PAGINATION_AVAILABLE = False
@@ -43,7 +44,9 @@ class MenuHandler:
         """
         self.last_message = ""
         self.command_invoker = command_invoker or CommandInvoker()
-        self.use_pagination = PAGINATION_AVAILABLE and config.get_lazy_load_threshold() > 0
+        self.use_pagination = (
+            PAGINATION_AVAILABLE and config.get_lazy_load_threshold() > 0
+        )
 
     def display_main_menu(self, live_streams_count: int) -> None:
         """Display the main menu with current status."""
@@ -189,7 +192,11 @@ class MenuHandler:
             # Check if it's a pagination command
             if PAGINATION_AVAILABLE:
                 # Get all streams for pagination context
-                all_streams = stream_manager.load_streams() if hasattr(stream_manager, 'load_streams') else live_streams
+                all_streams = (
+                    stream_manager.load_streams()
+                    if hasattr(stream_manager, "load_streams")
+                    else live_streams
+                )
 
                 if handle_pagination_command(choice, all_streams):
                     # Pagination command was handled, no refresh needed
@@ -198,7 +205,9 @@ class MenuHandler:
                 else:
                     # Unknown command
                     logger.warning(f"Unknown command: {choice}")
-                    self.last_message = f"Unknown command: '{choice}'. Type 'h' for help."
+                    self.last_message = (
+                        f"Unknown command: '{choice}'. Type 'h' for help."
+                    )
             else:
                 # Unknown command without pagination
                 logger.warning(f"Unknown command: {choice}")
@@ -206,7 +215,9 @@ class MenuHandler:
 
         return needs_refresh, should_continue
 
-    def display_streams_with_pagination(self, streams: List[Dict[str, Any]], title: str = "--- Live Streams ---") -> None:
+    def display_streams_with_pagination(
+        self, streams: List[Dict[str, Any]], title: str = "--- Live Streams ---"
+    ) -> None:
         """
         Display streams with pagination support if enabled and threshold is met.
 
@@ -220,9 +231,9 @@ class MenuHandler:
 
         # Check if pagination should be used
         should_paginate = (
-            PAGINATION_AVAILABLE and
-            self.use_pagination and
-            len(streams) >= config.get_lazy_load_threshold()
+            PAGINATION_AVAILABLE
+            and self.use_pagination
+            and len(streams) >= config.get_lazy_load_threshold()
         )
 
         if should_paginate:
@@ -231,8 +242,8 @@ class MenuHandler:
             page_streams, pagination_info = manager.get_page(streams)
 
             # --- Lazy Loading Enrichment Step ---
-            from .ui.pagination import get_lazy_loader
             from .models import StreamInfo
+            from .ui.pagination import get_lazy_loader
 
             lazy_loader = get_lazy_loader()
             enriched_page_streams = []
@@ -257,7 +268,7 @@ class MenuHandler:
                 pagination_info,
                 title=title,
                 show_pagination_controls=True,
-                clear_screen_first=False
+                clear_screen_first=False,
             )
         else:
             # Use regular display

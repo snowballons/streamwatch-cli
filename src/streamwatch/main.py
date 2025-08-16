@@ -86,7 +86,6 @@ def app() -> None:
 
 
 def main() -> None:
-
     setup_logging()
     logger = logging.getLogger(config.APP_NAME)
     logger.info("StreamWatch application started.")
@@ -94,6 +93,7 @@ def main() -> None:
     # --- Automatic Migration from JSON to SQLite ---
     try:
         from .migration import DataMigrator
+
         migrator = DataMigrator()
         # The perform_migration function now handles the check internally
         logger.info("Checking for and performing data migration if needed.")
@@ -103,8 +103,11 @@ def main() -> None:
             ui.console.print(f"[red]Migration failed: {result['message']}[/red]")
             logger.critical(f"Migration failed: {result['message']}")
             sys.exit(1)
-        
-        if result.get("streams_migrated", 0) > 0 or result.get("config_migrated", 0) > 0:
+
+        if (
+            result.get("streams_migrated", 0) > 0
+            or result.get("config_migrated", 0) > 0
+        ):
             ui.console.print("[green]Data migration completed successfully.[/green]")
 
     except Exception as e:
@@ -127,6 +130,8 @@ def main() -> None:
         ui.console.print(
             "\nScript interrupted by user. Exiting gracefully. Goodbye!", style="info"
         )
+
+
 if __name__ == "__main__":
     # This allows running the script directly like: python -m stream_manager_cli.main
     # However, the primary execution method after packaging will be via the entry point.

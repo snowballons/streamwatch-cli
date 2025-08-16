@@ -121,7 +121,9 @@ class PlayStreamCommand(Command):
                 )
             elif playback_action == "player_exited":
                 return CommandResult(
-                    success=True, message="Player exited unexpectedly", needs_refresh=False
+                    success=True,
+                    message="Player exited unexpectedly",
+                    needs_refresh=False,
                 )
             else:
                 return CommandResult(

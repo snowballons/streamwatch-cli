@@ -208,12 +208,14 @@ class CommandInvoker:
             "total_commands_executed": len(self.command_history),
             "undoable_commands_available": len(self.undo_stack),
             "can_undo": self.can_undo(),
-            "last_command": str(self.get_last_command())
-            if self.get_last_command()
-            else None,
-            "last_undoable_command": str(self.get_last_undoable_command())
-            if self.get_last_undoable_command()
-            else None,
+            "last_command": (
+                str(self.get_last_command()) if self.get_last_command() else None
+            ),
+            "last_undoable_command": (
+                str(self.get_last_undoable_command())
+                if self.get_last_undoable_command()
+                else None
+            ),
         }
 
     def __str__(self) -> str:

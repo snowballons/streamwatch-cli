@@ -1,6 +1,7 @@
 """
 Sample data fixtures for testing.
 """
+
 import json
 from typing import Any, Dict, List
 
