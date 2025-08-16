@@ -23,6 +23,7 @@
 
 *   [Why Use StreamWatch?](#why-use-streamwatch)
 *   [Key Features](#key-features)
+*   [Architecture & Recent Improvements](#architecture--recent-improvements)
 *   [Supported Platforms](#supported-platforms)
 *   [Prerequisites](#prerequisites)
 *   [Installation](#installation)
@@ -59,7 +60,7 @@
 
 - **Live Status Display:** See who's live with their Alias/Username, Platform, Category, and Viewer Count.
 - **Interactive Navigation:** Use arrow keys, number input, or first-letter search to quickly select streams.
-- **Playback Controls:** Stop, play next/previous, change quality, and more, all from the terminal.
+- **Playback Controls:** Replay, play next/previous, change quality, and more, all from the terminal.
 - **Stream Aliases:** Assign custom nicknames to your streams for a personalized list.
 - **Stream Management:** Add, remove, list, import, and export your stream list with ease.
 - **File-Based Management:** Use a `streams.d` directory to manage your streams with simple text files.
@@ -67,8 +68,54 @@
 - **Playback Hooks:** Trigger custom scripts before and after a stream plays.
 - **Persistent Configuration:** User-editable `config.ini` for settings and `streams.json` for your interactive list.
 - **Quick Access:** Instantly replay the last stream you watched.
-- **Polished UI:** A colorful and modern terminal interface.
+- **Polished UI:** A colorful and modern terminal interface with enhanced pagination and input handling.
 - **Detailed Logging:** Comprehensive log files for easy troubleshooting.
+- **Enhanced Resilience:** Built-in retry mechanisms, circuit breaker patterns, and intelligent caching for improved reliability.
+- **Modular Architecture:** Clean separation of concerns with dedicated modules for UI, stream management, and playback control.
+
+---
+
+## Architecture & Recent Improvements
+
+StreamWatch has undergone significant architectural improvements to enhance reliability, maintainability, and performance:
+
+### 🏗️ **Modular Architecture**
+- **Separation of Concerns:** Clean division between UI components, stream management, and playback control
+- **Command Pattern:** Structured command system for better code organization and testing
+- **Dependency Injection:** Improved modularity and testability through proper dependency management
+- **Enhanced Models:** Comprehensive data models with validation using Pydantic for type safety
+
+### 🔄 **Resilience & Performance**
+- **Intelligent Caching:** Stream status caching with TTL to reduce API calls and improve response times
+- **Retry Mechanisms:** Exponential backoff retry logic for handling temporary failures
+- **Circuit Breaker Pattern:** Prevents cascading failures by temporarily disabling failing streams
+- **Rate Limiting:** Token bucket algorithm to respect platform rate limits and prevent abuse
+
+### 🛡️ **Security & Validation**
+- **Enhanced Input Validation:** Comprehensive URL and user input sanitization
+- **Security Scanning:** Integrated Bandit security vulnerability scanning in CI/CD
+- **XSS Protection:** Safe rendering of user content and stream metadata
+- **Input Sanitization:** Proper validation and cleaning of all user inputs
+
+### 🧪 **Testing & Quality Assurance**
+- **Comprehensive Test Suite:** Unit and integration tests with high coverage requirements
+- **Type Safety:** Full type hints throughout the codebase with MyPy static type checking
+- **Code Quality Tools:** Black, isort, Flake8, and MyPy integrated via pre-commit hooks
+- **Automated Testing:** CI/CD pipeline with automated quality checks and security scanning
+
+### 📊 **Enhanced User Experience**
+- **Improved Pagination:** Better handling of large stream lists with efficient navigation
+- **Enhanced Error Handling:** More informative error messages and graceful failure recovery
+- **Better Logging:** Comprehensive logging system for easier troubleshooting and debugging
+- **UI Responsiveness:** Optimized UI components for smoother interaction and better performance
+
+### 🔧 **Developer Experience**
+- **Modern Development Tools:** Integration with uv for faster dependency management
+- **Pre-commit Hooks:** Automated code quality checks before commits
+- **Development Documentation:** Comprehensive setup and contribution guidelines
+- **Consistent Coding Standards:** Enforced code formatting and style guidelines
+
+These improvements ensure StreamWatch remains maintainable, secure, and performant while providing an excellent user experience.
 
 ---
 
@@ -163,7 +210,7 @@ streamwatch
 
 | Key(s) | Action                                         |
 |--------|------------------------------------------------|
-| `S`      | Stop the current stream.                       |
+| `S`      | Replay the current stream.                     |
 | `N`      | Play the next live stream in the list.         |
 | `P`      | Play the previous live stream in the list.     |
 | `C`      | Change quality on the fly.                     |
