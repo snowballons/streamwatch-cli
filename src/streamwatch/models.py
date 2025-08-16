@@ -118,6 +118,7 @@ class StreamInfo(BaseModel):
     platform: str = Field(default="Unknown", description="Platform name")
     username: str = Field(default="unknown_stream", description="Username or channel identifier")
     category: str = Field(default="N/A", description="Stream category or game")
+    title: Optional[str] = Field(default=None, description="Stream title") # <-- ADD THIS LINE
     viewer_count: Optional[int] = Field(default=None, ge=0, description="Current viewer count")
     status: StreamStatus = Field(default=StreamStatus.UNKNOWN, description="Current stream status")
     url_type: UrlType = Field(default=UrlType.UNKNOWN, description="Type of URL")

@@ -145,13 +145,13 @@ def terminate_player_process(process: Optional[subprocess.Popen]) -> None:
         ui.console.print("Stopping player...", style="info")
         try:
             process.terminate()  # Ask nicely first
-            process.wait(timeout=3)  # Wait for it to terminate
+            process.wait(timeout=1)  # Wait for it to terminate
         except subprocess.TimeoutExpired:
             ui.console.print(
                 "Player did not terminate gracefully, forcing kill...", style="warning"
             )
             process.kill()  # Force kill
-            process.wait(timeout=3)
+            process.wait(timeout=1)
         except Exception as e:
             ui.console.print(f"[error]Error terminating player: {e}[/error]")
         ui.console.print("Player stopped.", style="success")

@@ -150,6 +150,7 @@ class PlaybackController:
             # --- Handle User Action ---
             # Handle all actions through the existing function
             action_result = self.handle_playback_controls(
+
                 action,
                 data,
                 current_stream_info,
@@ -159,6 +160,21 @@ class PlaybackController:
                 is_navigation_possible,
                 player_process,
             )
+
+            # --- Immediate Quit Handler ---
+            # Handle the 'quit' action immediately to ensure a clean exit.
+            if action_result.get("return_action") == "quit_application":
+                logger.info("User requested quit from playback. Terminating session and exiting.")
+                if player_process:
+                    player.terminate_player_process(player_process)
+                    player.execute_hook("post", current_stream_info, current_quality)
+                # We must exit the entire application here.
+                # Returning the string causes issues down the line.
+                import sys
+                ui.clear_screen()
+                ui.console.print("Exiting StreamWatch. Goodbye!", style="success")
+                sys.exit(0)
+            # --- End of Immediate Quit Handler ---
 
             # --- Handle State Updates and Termination ---
 
@@ -310,19 +326,14 @@ class PlaybackController:
             result["terminate"] = True
             result["return_action"] = "quit_application"
 
+        else:
             # If no user action was taken, check if the player is still running.
-            # This is the correct place to detect an unexpected exit.
             if player_process and player_process.poll() is not None:
                 logger.warning("Player process has exited unexpectedly.")
                 ui.console.print("\n[warning]Player exited unexpectedly.[/warning]", style="warning")
-                player.terminate_player_process(player_process) # Ensure cleanup
-                player_process = None
-
-                player.execute_hook("post", current_stream_info, current_quality)
-
-                # We return to the main menu instead of stopping completely.
-                return "return_to_main"
-            # If player is running and no action was taken, just pause briefly.
+                # This should terminate the session and return to the main menu
+                result["terminate"] = True
+                result["return_action"] = "return_to_main"
             time.sleep(0.1)
 
         return result

@@ -335,6 +335,7 @@ class StreamListManager:
         self._cached_filtered_streams = None
 
 
+
 class LazyStreamLoader:
     """
     Lazy loader for stream metadata to optimize memory usage.
@@ -345,60 +346,59 @@ class LazyStreamLoader:
 
     def __init__(self, cache_size: int = None):
         """
-        Initialize the lazy loader.
-        
-        Args:
-            cache_size: Maximum number of streams to cache (uses config default if None)
+        Initialize the lazy loader and dynamically create the cached function.
         """
+        from .. import stream_checker # Local import to avoid circular dependencies
+
         self.cache_size = cache_size or config.get_metadata_cache_size()
         logger.debug(f"LazyStreamLoader initialized with cache_size={self.cache_size}")
 
+        # Define the core fetching logic as a local function
+        def _fetch_details_uncached(stream: StreamInfo) -> StreamInfo:
+            """The actual workhorse function that fetches data."""
+            logger.debug(f"Cache miss. Lazily fetching details for {stream.url}")
+            metadata_result = stream_checker.get_stream_metadata_json_detailed(stream.url)
 
-    from .. import stream_checker  # Needed for get_stream_metadata_json_detailed
+            if not metadata_result.success or not metadata_result.json_data:
+                return stream
 
-    @lru_cache(maxsize=None)
+            try:
+                metadata_json = json.loads(metadata_result.json_data)
+                stream_metadata = StreamMetadata.from_json(metadata_json)
+
+                updated_stream = stream.model_copy(update={
+                    'title': stream_metadata.title, # <-- ADD THIS LINE
+                    'category': stream_metadata.category or stream.category,
+                    'viewer_count': stream_metadata.viewer_count,
+                    'username': stream_metadata.author or stream.username
+                })
+                return updated_stream
+            except (json.JSONDecodeError, TypeError) as e:
+                logger.warning(f"Failed to decode or parse metadata for {stream.url}: {e}")
+                return stream
+
+        # Dynamically create the cached version of the function
+        self._get_details_cached = lru_cache(maxsize=self.cache_size)(_fetch_details_uncached)
+
     def get_details(self, stream: StreamInfo) -> StreamInfo:
         """
-        Lazily fetches and caches detailed metadata for a single stream.
-        This method is the core of the lazy loading mechanism.
+        Gets detailed stream information using the lazy-loading function.
         """
-        # Set the cache size dynamically from config
-        self.get_details.cache_info.maxsize = self.cache_size
-        logger.debug(f"Lazily fetching details for {stream.url}")
-        metadata_result = self.stream_checker.get_stream_metadata_json_detailed(stream.url)
-
-        if not metadata_result.success or not metadata_result.json_data:
-            return stream  # Return original object on failure
-
-        try:
-            metadata_json = json.loads(metadata_result.json_data)
-            stream_metadata = StreamMetadata.from_json(metadata_json)
-
-            # Create a new StreamInfo object with the updated details
-            updated_stream = stream.model_copy(update={
-                'category': stream_metadata.category or stream.category,
-                'viewer_count': stream_metadata.viewer_count,
-                'username': stream_metadata.author or stream.username
-            })
-            return updated_stream
-
-        except (json.JSONDecodeError, TypeError) as e:
-            logger.warning(f"Failed to decode or parse metadata for {stream.url}: {e}")
-            return stream # Return original on parsing failure
+        return self._get_details_cached(stream)
 
     def clear_cache(self) -> None:
         """Clear the LRU cache."""
-        self.get_stream_details.cache_clear()
+        self._get_details_cached.cache_clear()
         logger.debug("Stream details cache cleared")
 
     def get_cache_info(self) -> dict:
         """Get cache statistics."""
-        cache_info = self.get_stream_details.cache_info()
+        info = self._get_details_cached.cache_info()
         return {
-            "hits": cache_info.hits,
-            "misses": cache_info.misses,
-            "current_size": cache_info.currsize,
-            "max_size": cache_info.maxsize
+            "hits": info.hits,
+            "misses": info.misses,
+            "current_size": info.currsize,
+            "max_size": info.maxsize
         }
 
 

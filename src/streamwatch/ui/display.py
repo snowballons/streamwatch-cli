@@ -146,9 +146,18 @@ def format_stream_for_display(
         if viewer_display != "N/A":
             text.append(f" │ 👁️ {viewer_display}", style=colors["viewer_color"])
 
-        # Safe category display
-        category_display = safe_info.get('category', 'N/A')
-        text.append(f" - {category_display}", style=colors["category_color"])
+        # --- Intelligent Description Display ---
+        # Use only the category field for description.
+        description = stream_info.get("category")
+        if not description or description == "N/A":
+            description = stream_info.get("title")
+
+        # If we still have no description, fallback to "N/A"
+        if not description:
+            description = "N/A"
+        # Safely format and append the chosen description
+        safe_description = safe_format_for_display(description, 60) # Truncate long titles
+        text.append(f" - {safe_description}", style=colors["category_color"])
     elif isinstance(stream_info, str):
         if index is not None:
             text.append(f"[{index + 1}] ", style=colors["num_color"])
@@ -340,12 +349,12 @@ def _display_pagination_controls(pagination_info: 'PaginationInfo') -> None:
     controls = []
 
     if pagination_info.has_previous:
-        controls.extend(["[p]rev", "[f]irst"])
+        controls.extend(["[[p]]rev", "[[f]]irst"])
 
     if pagination_info.has_next:
-        controls.extend(["[n]ext", "[l]ast"])
+        controls.extend(["[[n]]ext", "[[l]]ast"])
 
-    controls.extend(["[s]earch", "[c]lear filters", "[h]elp"])
+    controls.extend(["[[s]]earch", "[[c]]lear filters", "[[h]]elp"])
 
     if controls:
         console.print(f"Controls: {' | '.join(controls)}", style="dimmed")

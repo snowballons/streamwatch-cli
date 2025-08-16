@@ -647,6 +647,8 @@ def fetch_live_streams(
             live_streams_info.append(StreamInfo(
                 url=url,
                 alias=stream_data.get('alias', 'Unnamed'),
+                platform=stream_data.get('platform', 'Unknown'), # Add this
+                username=stream_data.get('username', 'unknown'), # Add this
                 status=StreamStatus.LIVE # Mark as live
             ))
 
