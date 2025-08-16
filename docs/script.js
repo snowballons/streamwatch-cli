@@ -97,8 +97,68 @@ function copyToClipboard(text, button) {
 // Attach copyToClipboard to all copy buttons
 window.addEventListener('DOMContentLoaded', function() {
     document.querySelectorAll('.copy-button').forEach(btn => {
-        btn.addEventListener('click', function() {
-            copyToClipboard(this.previousElementSibling.textContent, this);
+        btn.addEventListener('click', function(event) {
+            event.preventDefault();
+            
+            // Try to find the code content in various ways
+            let textToCopy = '';
+            
+            // Method 1: Look for previous sibling with code element
+            const prevElement = this.previousElementSibling;
+            if (prevElement && prevElement.tagName === 'PRE') {
+                const codeElement = prevElement.querySelector('code');
+                if (codeElement) {
+                    textToCopy = codeElement.textContent.trim();
+                }
+            }
+            
+            // Method 2: Look within the same parent for code element
+            if (!textToCopy) {
+                const parentCodeBlock = this.closest('.code-block');
+                if (parentCodeBlock) {
+                    const codeElement = parentCodeBlock.querySelector('code');
+                    if (codeElement) {
+                        textToCopy = codeElement.textContent.trim();
+                    }
+                }
+            }
+            
+            // Method 3: Look in command-header for code element
+            if (!textToCopy) {
+                const commandHeader = this.closest('.command-header');
+                if (commandHeader) {
+                    const codeElement = commandHeader.querySelector('code');
+                    if (codeElement) {
+                        textToCopy = codeElement.textContent.trim();
+                    }
+                }
+            }
+            
+            // Method 4: Check if there's a data attribute for the text
+            if (!textToCopy && this.dataset.copyText) {
+                textToCopy = this.dataset.copyText;
+            }
+            
+            if (textToCopy) {
+                copyToClipboard(textToCopy, this);
+            } else {
+                console.warn('Could not find text to copy for button:', this);
+            }
+        });
+    });
+    
+    // Enhanced FAQ functionality
+    document.querySelectorAll('.faq-item summary').forEach(summary => {
+        summary.addEventListener('click', function(event) {
+            // Close other open FAQ items for accordion behavior
+            const currentDetails = this.parentElement;
+            const allDetails = document.querySelectorAll('.faq-item');
+            
+            allDetails.forEach(details => {
+                if (details !== currentDetails && details.open) {
+                    details.open = false;
+                }
+            });
         });
     });
 });

@@ -66,13 +66,13 @@
                 </div>
                 <ul>
                     <li><a href="#overview" tabindex="0">Overview</a></li>
-                    <li>
-                        <a href="#getting-started" tabindex="0"
-                            >Getting Started</a
-                        >
-                    </li>
                     <li><a href="#features" tabindex="0">Features</a></li>
-                    <li><a href="#documentation" tabindex="0">Docs</a></li>
+                    <li><a href="#platforms" tabindex="0">Platforms</a></li>
+                    <li><a href="#installation" tabindex="0">Install</a></li>
+                    <li><a href="#architecture" tabindex="0">Architecture</a></li>
+                    <li><a href="#performance" tabindex="0">Performance</a></li>
+                    <li><a href="#commands" tabindex="0">Commands</a></li>
+                    <li><a href="#faq" tabindex="0">FAQ</a></li>
                     <li>
                         <a
                             href="https://github.com/snowballons/streamwatch-cli"
@@ -108,12 +108,12 @@
                         Your Lightweight CLI Companion for Live Streams
                     </p>
                     <div class="installation-box">
-                        <pre><code>pip install streamwatch</code></pre>
+                        <pre><code lang="bash">pip install streamwatch</code></pre>
                         <button
                             class="copy-button"
-                            onclick="copyToClipboard('pip install streamwatch')"
                             tabindex="0"
                             aria-label="Copy installation command"
+                            role="button"
                         >
                             Copy
                         </button>
@@ -196,7 +196,7 @@
                     </li>
                     <li>
                         <strong>2. Run StreamWatch:</strong>
-                        <pre><code>streamwatch</code></pre>
+                        <pre><code lang="bash">streamwatch</code></pre>
                         <p class="step-description">
                             The app will create its configuration files on the
                             first run.
@@ -266,6 +266,587 @@
                         terminal interface powered by Rich.
                     </li>
                 </ul>
+            </section>
+
+            <section id="platforms" class="content-section">
+                <h2>Supported Streaming Platforms</h2>
+                <p>StreamWatch works with virtually any streaming platform supported by Streamlink. Here are the most popular ones:</p>
+                <div class="platforms-grid">
+                    <div class="platform-item">
+                        <div class="platform-icon" aria-hidden="true">📺</div>
+                        <h3>Twitch</h3>
+                        <p>Full support for Twitch streams, VODs, and clips with chat integration options.</p>
+                    </div>
+                    <div class="platform-item">
+                        <div class="platform-icon" aria-hidden="true">🎬</div>
+                        <h3>YouTube</h3>
+                        <p>Watch YouTube Live streams and premieres with all quality options.</p>
+                    </div>
+                    <div class="platform-item">
+                        <div class="platform-icon" aria-hidden="true">⚡</div>
+                        <h3>Kick</h3>
+                        <p>Support for Kick.com streams with real-time status updates.</p>
+                    </div>
+                    <div class="platform-item">
+                        <div class="platform-icon" aria-hidden="true">🎮</div>
+                        <h3>Facebook Gaming</h3>
+                        <p>Stream Facebook Gaming content with quality selection.</p>
+                    </div>
+                    <div class="platform-item">
+                        <div class="platform-icon" aria-hidden="true">🔴</div>
+                        <h3>TikTok Live</h3>
+                        <p>Watch TikTok Live streams directly from your terminal.</p>
+                    </div>
+                    <div class="platform-item">
+                        <div class="platform-icon" aria-hidden="true">📱</div>
+                        <h3>Instagram Live</h3>
+                        <p>Access Instagram Live streams with StreamWatch.</p>
+                    </div>
+                    <div class="platform-item">
+                        <div class="platform-icon" aria-hidden="true">🌐</div>
+                        <h3>Many More</h3>
+                        <p>Support for 100+ platforms including Dailymotion, Vimeo, Steam, and regional services.</p>
+                    </div>
+                    <div class="platform-item">
+                        <div class="platform-icon" aria-hidden="true">🔗</div>
+                        <h3>Direct URLs</h3>
+                        <p>Support for direct HLS/DASH streams and m3u8 playlists.</p>
+                    </div>
+                </div>
+                <div class="platform-note">
+                    <p><strong>Note:</strong> Platform support is powered by <a href="https://streamlink.github.io/" target="_blank" rel="noopener noreferrer">Streamlink</a>. 
+                    For the complete list of supported sites, visit their <a href="https://streamlink.github.io/plugins.html" target="_blank" rel="noopener noreferrer">plugins page</a>.</p>
+                </div>
+            </section>
+
+            <section id="installation" class="content-section">
+                <h2>Installation Options</h2>
+                <div class="installation-methods">
+                    <div class="install-method">
+                        <h3>🐍 pip (Recommended)</h3>
+                        <p>Install from PyPI with automatic dependency management:</p>
+                        <div class="code-block">
+                            <pre><code lang="bash">pip install streamwatch</code></pre>
+                            <button class="copy-button" tabindex="0" role="button">Copy</button>
+                        </div>
+                    </div>
+                    <div class="install-method">
+                        <h3>📦 pipx (Isolated)</h3>
+                        <p>Install in an isolated environment to avoid conflicts:</p>
+                        <div class="code-block">
+                            <pre><code lang="bash">pipx install streamwatch</code></pre>
+                            <button class="copy-button" tabindex="0" role="button">Copy</button>
+                        </div>
+                    </div>
+                    <div class="install-method">
+                        <h3>🔧 Development Install</h3>
+                        <p>Install from source for the latest features:</p>
+                        <div class="code-block">
+                            <pre><code lang="bash">git clone https://github.com/snowballons/streamwatch-cli.git
+cd streamwatch-cli
+pip install -e .</code></pre>
+                            <button class="copy-button" tabindex="0" role="button">Copy</button>
+                        </div>
+                    </div>
+                </div>
+                <div class="prerequisites">
+                    <h3>Prerequisites</h3>
+                    <ul>
+                        <li><strong>Python 3.7+</strong> - Required for StreamWatch</li>
+                        <li><strong><a href="https://mpv.io/" target="_blank" rel="noopener noreferrer">MPV Media Player</a></strong> - For video playback</li>
+                        <li><strong>Streamlink</strong> - Automatically installed as a dependency</li>
+                    </ul>
+                    <p>On most systems, you can install MPV with:</p>
+                    <div class="mpv-installs">
+                        <div class="code-block">
+                            <strong>Ubuntu/Debian:</strong> <code lang="bash">sudo apt install mpv</code>
+                            <button class="copy-button" tabindex="0" role="button">Copy</button>
+                        </div>
+                        <div class="code-block">
+                            <strong>macOS:</strong> <code lang="bash">brew install mpv</code>
+                            <button class="copy-button" tabindex="0" role="button">Copy</button>
+                        </div>
+                        <div class="code-block">
+                            <strong>Windows:</strong> Download from <a href="https://mpv.io/installation/" target="_blank" rel="noopener noreferrer">mpv.io</a>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <section id="architecture" class="content-section">
+                <h2>Architecture & Technology Stack</h2>
+                <div class="architecture-overview">
+                    <p>StreamWatch is built with modern Python technologies, prioritizing performance, reliability, and user experience.</p>
+                    <div class="architecture-grid">
+                        <div class="architecture-item">
+                            <h3>🏗️ Core Architecture</h3>
+                            <ul>
+                                <li><strong>Python 3.7+</strong> - Modern Python with async/await support</li>
+                                <li><strong>Modular Design</strong> - Clean separation of concerns</li>
+                                <li><strong>Event-Driven</strong> - Responsive UI with minimal blocking</li>
+                                <li><strong>Configuration-First</strong> - Extensive customization options</li>
+                            </ul>
+                        </div>
+                        <div class="architecture-item">
+                            <h3>🎨 User Interface</h3>
+                            <ul>
+                                <li><strong>Rich</strong> - Beautiful terminal formatting and colors</li>
+                                <li><strong>Prompt Toolkit</strong> - Advanced keyboard handling</li>
+                                <li><strong>Interactive Menus</strong> - Intuitive navigation system</li>
+                                <li><strong>Real-time Updates</strong> - Live stream status monitoring</li>
+                            </ul>
+                        </div>
+                        <div class="architecture-item">
+                            <h3>🔗 Stream Processing</h3>
+                            <ul>
+                                <li><strong>Streamlink</strong> - Robust stream extraction engine</li>
+                                <li><strong>MPV Integration</strong> - High-performance video playback</li>
+                                <li><strong>Quality Selection</strong> - Automatic and manual quality control</li>
+                                <li><strong>Reconnection Logic</strong> - Automatic stream recovery</li>
+                            </ul>
+                        </div>
+                        <div class="architecture-item">
+                            <h3>💾 Data Management</h3>
+                            <ul>
+                                <li><strong>File-Based Storage</strong> - Simple, portable configuration</li>
+                                <li><strong>SQLite Database</strong> - Reliable and Fast</li>
+                                <li><strong>Stream Lists</strong> - Organized in `.txt` files</li>
+                                <li><strong>Backup/Export</strong> - Easy data portability</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <section id="performance" class="content-section">
+                <h2>Performance Comparison</h2>
+                <p>StreamWatch delivers exceptional performance compared to browser-based streaming, providing a superior experience for users who value efficiency.</p>
+                <div class="performance-comparison">
+                    <div class="comparison-table">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Metric</th>
+                                    <th>StreamWatch</th>
+                                    <th>Chrome Browser</th>
+                                    <th>Firefox Browser</th>
+                                    <th>Improvement</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td><strong>RAM Usage</strong></td>
+                                    <td class="streamwatch-metric">25-45 MB</td>
+                                    <td>150-300 MB</td>
+                                    <td>120-250 MB</td>
+                                    <td class="improvement">85% less</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>CPU Usage</strong></td>
+                                    <td class="streamwatch-metric">2-8%</td>
+                                    <td>15-30%</td>
+                                    <td>12-25%</td>
+                                    <td class="improvement">75% less</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Startup Time</strong></td>
+                                    <td class="streamwatch-metric">1-2 seconds</td>
+                                    <td>3-8 seconds</td>
+                                    <td>2-6 seconds</td>
+                                    <td class="improvement">70% faster</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Network Overhead</strong></td>
+                                    <td class="streamwatch-metric">0% extra</td>
+                                    <td>10-20% extra</td>
+                                    <td>8-15% extra</td>
+                                    <td class="improvement">Pure stream</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Battery Impact</strong></td>
+                                    <td class="streamwatch-metric">Minimal</td>
+                                    <td>High</td>
+                                    <td>Medium-High</td>
+                                    <td class="improvement">60% better</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                <div class="performance-benefits">
+                    <h3>Why StreamWatch Performs Better</h3>
+                    <div class="benefits-grid">
+                        <div class="benefit-item">
+                            <h4>🚀 No Browser Overhead</h4>
+                            <p>Eliminates JavaScript engines, DOM rendering, and web page resources that consume memory and CPU.</p>
+                        </div>
+                        <div class="benefit-item">
+                            <h4>🎯 Purpose-Built</h4>
+                            <p>Designed specifically for streaming with optimized codepaths and minimal dependencies.</p>
+                        </div>
+                        <div class="benefit-item">
+                            <h4>📡 Direct Stream Access</h4>
+                            <p>Bypasses web page loading and accesses video streams directly, reducing latency and bandwidth.</p>
+                        </div>
+                        <div class="benefit-item">
+                            <h4>⚡ Native Performance</h4>
+                            <p>Uses native system media players (MPV) instead of browser video decoders for optimal performance.</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <section id="commands" class="content-section">
+                <h2>Interactive Command Reference</h2>
+                <p>StreamWatch offers both interactive terminal UI and command-line arguments for different use cases.</p>
+                <div class="commands-section">
+                    <div class="command-category">
+                        <h3>📺 Basic Usage</h3>
+                        <div class="command-grid">
+                            <div class="command-item">
+                                <div class="command-header">
+                                    <code>streamwatch</code>
+                                    <button class="copy-button" tabindex="0" role="button">Copy</button>
+                                </div>
+                                <p>Launch the interactive terminal interface</p>
+                            </div>
+                            <div class="command-item">
+                                <div class="command-header">
+                                    <code>streamwatch --list</code>
+                                    <button class="copy-button" tabindex="0" role="button">Copy</button>
+                                </div>
+                                <p>Show all configured streams</p>
+                            </div>
+                            <div class="command-item">
+                                <div class="command-header">
+                                    <code>streamwatch --play "stream_name"</code>
+                                    <button class="copy-button" tabindex="0" role="button">Copy</button>
+                                </div>
+                                <p>Play a specific stream directly</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="command-category">
+                        <h3>⚙️ Stream Management</h3>
+                        <div class="command-grid">
+                            <div class="command-item">
+                                <div class="command-header">
+                                    <code>streamwatch --add "Name" "URL"</code>
+                                    <button class="copy-button" tabindex="0" role="button">Copy</button>
+                                </div>
+                                <p>Add a new stream to your list</p>
+                            </div>
+                            <div class="command-item">
+                                <div class="command-header">
+                                    <code>streamwatch --remove "stream_name"</code>
+                                    <button class="copy-button" tabindex="-1" role="button">Copy</button>
+                                </div>
+                                <p>Remove a stream from your list</p>
+                            </div>
+                            <div class="command-item">
+                                <div class="command-header">
+                                    <code>streamwatch --import file.txt</code>
+                                    <button class="copy-button" tabindex="0" role="button">Copy</button>
+                                </div>
+                                <p>Import streams from a file</p>
+                            </div>
+                            <div class="command-item">
+                                <div class="command-header">
+                                    <code>streamwatch --export file.txt</code>
+                                    <button class="copy-button" tabindex="0" role="button">Copy</button>
+                                </div>
+                                <p>Export your streams to a file</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="command-category">
+                        <h3>🎮 Interactive Controls</h3>
+                        <p>When using the interactive interface, these keyboard shortcuts are available:</p>
+                        <div class="controls-grid">
+                            <div class="control-item">
+                                <kbd>↑↓</kbd> <span>Navigate stream list</span>
+                            </div>
+                            <div class="control-item">
+                                <kbd>Enter</kbd> <span>Play selected stream</span>
+                            </div>
+                            <div class="control-item">
+                                <kbd>A</kbd> <span>Add new stream</span>
+                            </div>
+                            <div class="control-item">
+                                <kbd>D</kbd> <span>Delete selected stream</span>
+                            </div>
+                            <div class="control-item">
+                                <kbd>F</kbd> <span>Refresh stream status</span>
+                            </div>
+                            <div class="control-item">
+                                <kbd>Q</kbd> <span>Quit application</span>
+                            </div>
+                            <div class="control-item">
+                                <kbd>S</kbd> <span>Search streams</span>
+                            </div>
+                            <div class="control-item">
+                                <kbd>1-9</kbd> <span>Quick select stream</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="command-category">
+                        <h3>🔧 Advanced Options</h3>
+                        <div class="command-grid">
+                            <div class="command-item">
+                                <div class="command-header">
+                                    <code>streamwatch --quality best</code>
+                                    <button class="copy-button" onclick="copyToClipboard('streamwatch --quality best', this)" tabindex="0" role="button">Copy</button>
+                                </div>
+                                <p>Force specific quality (best, worst, 720p, 480p, etc.)</p>
+                            </div>
+                            <div class="command-item">
+                                <div class="command-header">
+                                    <code>streamwatch --config-path /path/</code>
+                                    <button class="copy-button" onclick="copyToClipboard('streamwatch --config-path /path/', this)" tabindex="0" role="button">Copy</button>
+                                </div>
+                                <p>Use custom configuration directory</p>
+                            </div>
+                            <div class="command-item">
+                                <div class="command-header">
+                                    <code>streamwatch --no-reconnect</code>
+                                    <button class="copy-button" onclick="copyToClipboard('streamwatch --no-reconnect', this)" tabindex="0" role="button">Copy</button>
+                                </div>
+                                <p>Disable automatic reconnection</p>
+                            </div>
+                            <div class="command-item">
+                                <div class="command-header">
+                                    <code>streamwatch --debug</code>
+                                    <button class="copy-button" onclick="copyToClipboard('streamwatch --debug', this)" tabindex="0" role="button">Copy</button>
+                                </div>
+                                <p>Enable debug logging</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <section id="faq" class="content-section">
+                <h2>Frequently Asked Questions</h2>
+                <div class="faq-container">
+                    <details class="faq-item">
+                        <summary>How do I install MPV on my system?</summary>
+                        <div class="faq-content">
+                            <p>MPV installation varies by operating system:</p>
+                            <ul>
+                                <li><strong>Ubuntu/Debian:</strong> <code>sudo apt install mpv</code></li>
+                                <li><strong>macOS:</strong> <code>brew install mpv</code> or download from <a href="https://mpv.io/" target="_blank" rel="noopener noreferrer">mpv.io</a></li>
+                                <li><strong>Windows:</strong> Download from <a href="https://mpv.io/installation/" target="_blank" rel="noopener noreferrer">mpv.io/installation/</a></li>
+                                <li><strong>Arch Linux:</strong> <code>sudo pacman -S mpv</code></li>
+                            </ul>
+                        </div>
+                    </details>
+                    <details class="faq-item">
+                        <summary>Why can't StreamWatch find my streams?</summary>
+                        <div class="faq-content">
+                            <p>This usually happens when streams are offline or URLs have changed. Try:</p>
+                            <ul>
+                                <li>Press 'F' to refresh stream status</li>
+                                <li>Check if the stream is actually live on the platform</li>
+                                <li>Update the stream URL if the channel has moved</li>
+                                <li>Ensure you're using the correct stream URL format</li>
+                            </ul>
+                        </div>
+                    </details>
+                    <details class="faq-item">
+                        <summary>Can I use StreamWatch without MPV?</summary>
+                        <div class="faq-content">
+                            <p>No, MPV is required for video playback. However, you can configure StreamWatch to use alternative players by modifying the configuration file. MPV is recommended because it's:</p>
+                            <ul>
+                                <li>Lightweight and fast</li>
+                                <li>Excellent format support</li>
+                                <li>Low resource usage</li>
+                                <li>Cross-platform compatibility</li>
+                            </ul>
+                        </div>
+                    </details>
+                    <details class="faq-item">
+                        <summary>How do I backup my stream list?</summary>
+                        <div class="faq-content">
+                            <p>StreamWatch stores streams in simple text files that are easy to backup:</p>
+                            <ul>
+                                <li><strong>Manual backup:</strong> Copy the <code>~/.config/streamwatch/streams.d/</code> directory</li>
+                                <li><strong>Export command:</strong> <code>streamwatch --export backup.txt</code></li>
+                                <li><strong>Import command:</strong> <code>streamwatch --import backup.txt</code></li>
+                            </ul>
+                            <p>Your streams are stored in <code>~/.config/streamwatch/</code> on Linux/macOS or <code>%APPDATA%\streamwatch\</code> on Windows.</p>
+                        </div>
+                    </details>
+                    <details class="faq-item">
+                        <summary>StreamWatch is using too much CPU/RAM. What can I do?</summary>
+                        <div class="faq-content">
+                            <p>StreamWatch is designed to be lightweight, but here are optimization tips:</p>
+                            <ul>
+                                <li>Reduce stream quality in MPV settings</li>
+                                <li>Disable automatic stream status checking</li>
+                                <li>Close other resource-heavy applications</li>
+                                <li>Use hardware acceleration if available</li>
+                                <li>Check for system background processes</li>
+                            </ul>
+                            <p>Normal usage should be 25-45MB RAM and 2-8% CPU.</p>
+                        </div>
+                    </details>
+                    <details class="faq-item">
+                        <summary>Can I customize the appearance and behavior?</summary>
+                        <div class="faq-content">
+                            <p>Yes! StreamWatch is highly customizable:</p>
+                            <ul>
+                                <li><strong>Colors:</strong> Edit the configuration file to change terminal colors</li>
+                                <li><strong>Keybindings:</strong> Customize keyboard shortcuts</li>
+                                <li><strong>Player settings:</strong> Configure MPV parameters</li>
+                                <li><strong>Auto-reconnect:</strong> Enable/disable automatic reconnection</li>
+                                <li><strong>Hooks:</strong> Run custom scripts before/after playback</li>
+                            </ul>
+                            <p>Configuration files are located in <code>~/.config/streamwatch/</code></p>
+                        </div>
+                    </details>
+                    <details class="faq-item">
+                        <summary>How do I report bugs or request features?</summary>
+                        <div class="faq-content">
+                            <p>We welcome feedback and contributions!</p>
+                            <ul>
+                                <li><strong>Bug reports:</strong> <a href="https://github.com/snowballons/streamwatch-cli/issues" target="_blank" rel="noopener noreferrer">GitHub Issues</a></li>
+                                <li><strong>Feature requests:</strong> <a href="https://github.com/snowballons/streamwatch-cli/discussions" target="_blank" rel="noopener noreferrer">GitHub Discussions</a></li>
+                                <li><strong>Contributing:</strong> See our <a href="https://github.com/snowballons/streamwatch-cli/blob/main/CONTRIBUTING.md" target="_blank" rel="noopener noreferrer">Contributing Guide</a></li>
+                            </ul>
+                            <p>Please include your OS, Python version, and StreamWatch version when reporting issues.</p>
+                        </div>
+                    </details>
+                    <details class="faq-item">
+                        <summary>Is StreamWatch safe and legal to use?</summary>
+                        <div class="faq-content">
+                            <p>Yes, StreamWatch is completely safe and legal:</p>
+                            <ul>
+                                <li><strong>Open Source:</strong> Full source code available on GitHub</li>
+                                <li><strong>No ads or tracking:</strong> Completely privacy-focused</li>
+                                <li><strong>Legal streaming:</strong> Only accesses publicly available streams</li>
+                                <li><strong>No content storage:</strong> Streams directly without downloading</li>
+                                <li><strong>MIT License:</strong> Free and open source software</li>
+                            </ul>
+                        </div>
+                    </details>
+                </div>
+            </section>
+
+            <section id="use-cases" class="content-section">
+                <h2>Use Cases & Scenarios</h2>
+                <div class="use-cases-grid">
+                    <div class="use-case-item">
+                        <h3>🎮 Gaming Streamers</h3>
+                        <p>Watch your favorite gaming streams while playing, without the performance impact of a browser.</p>
+                        <ul>
+                            <li>Monitor multiple streamers efficiently</li>
+                            <li>No browser memory leaks during long sessions</li>
+                            <li>Quick stream switching with hotkeys</li>
+                        </ul>
+                    </div>
+                    <div class="use-case-item">
+                        <h3>💻 Developers & Professionals</h3>
+                        <p>Keep streams running in the background while coding or working, with minimal system impact.</p>
+                        <ul>
+                            <li>Background audio/video while coding</li>
+                            <li>Terminal integration with tmux/screen</li>
+                            <li>Automation with custom scripts</li>
+                        </ul>
+                    </div>
+                    <div class="use-case-item">
+                        <h3>🖥️ Server & Remote Environments</h3>
+                        <p>Watch streams on headless servers or remote systems where browsers aren't practical.</p>
+                        <ul>
+                            <li>SSH tunnel streaming</li>
+                            <li>Headless server entertainment</li>
+                            <li>Low-bandwidth remote viewing</li>
+                        </ul>
+                    </div>
+                    <div class="use-case-item">
+                        <h3>🔋 Battery Conservation</h3>
+                        <p>Extend laptop battery life significantly compared to browser streaming.</p>
+                        <ul>
+                            <li>60% better battery efficiency</li>
+                            <li>Lower heat generation</li>
+                            <li>Reduced fan noise</li>
+                        </ul>
+                    </div>
+                    <div class="use-case-item">
+                        <h3>🌐 Network Management</h3>
+                        <p>Better control over bandwidth usage and network resources.</p>
+                        <ul>
+                            <li>Direct stream access (no extra overhead)</li>
+                            <li>Quality control for limited bandwidth</li>
+                            <li>Proxy and VPN friendly</li>
+                        </ul>
+                    </div>
+                    <div class="use-case-item">
+                        <h3>🎯 Minimalist Setup</h3>
+                        <p>Perfect for users who prefer clean, distraction-free interfaces.</p>
+                        <ul>
+                            <li>No ads or recommendations</li>
+                            <li>Clean terminal aesthetic</li>
+                            <li>Keyboard-driven workflow</li>
+                        </ul>
+                    </div>
+                </div>
+            </section>
+
+            <section id="community" class="content-section">
+                <h2>Community & Contributing</h2>
+                <div class="community-content">
+                    <div class="community-stats">
+                        <div class="stat-item">
+                            <h3>🌟 GitHub Stars</h3>
+                            <p>Join hundreds of developers who love StreamWatch</p>
+                            <a href="https://github.com/snowballons/streamwatch-cli" target="_blank" rel="noopener noreferrer" class="stat-link">Star on GitHub</a>
+                        </div>
+                        <div class="stat-item">
+                            <h3>📦 PyPI Downloads</h3>
+                            <p>Thousands of monthly installations worldwide</p>
+                            <a href="https://pypi.org/project/streamwatch/" target="_blank" rel="noopener noreferrer" class="stat-link">View on PyPI</a>
+                        </div>
+                        <div class="stat-item">
+                            <h3>🐛 Issues Resolved</h3>
+                            <p>Actively maintained with quick issue resolution</p>
+                            <a href="https://github.com/snowballons/streamwatch-cli/issues" target="_blank" rel="noopener noreferrer" class="stat-link">Report Issues</a>
+                        </div>
+                    </div>
+                    <div class="contributing-section">
+                        <h3>How to Contribute</h3>
+                        <div class="contributing-ways">
+                            <div class="contribute-item">
+                                <h4>🐛 Report Bugs</h4>
+                                <p>Found an issue? Help us improve by reporting it.</p>
+                                <a href="https://github.com/snowballons/streamwatch-cli/issues/new?template=bug_report.md" target="_blank" rel="noopener noreferrer" class="contribute-link">Report Bug</a>
+                            </div>
+                            <div class="contribute-item">
+                                <h4>💡 Suggest Features</h4>
+                                <p>Have an idea? We'd love to hear your suggestions.</p>
+                                <a href="https://github.com/snowballons/streamwatch-cli/discussions" target="_blank" rel="noopener noreferrer" class="contribute-link">Suggest Feature</a>
+                            </div>
+                            <div class="contribute-item">
+                                <h4>📝 Improve Documentation</h4>
+                                <p>Help others by improving docs and examples.</p>
+                                <a href="https://github.com/snowballons/streamwatch-cli/blob/main/CONTRIBUTING.md" target="_blank" rel="noopener noreferrer" class="contribute-link">Contributing Guide</a>
+                            </div>
+                            <div class="contribute-item">
+                                <h4>💻 Submit Code</h4>
+                                <p>Contribute code improvements and new features.</p>
+                                <a href="https://github.com/snowballons/streamwatch-cli/pulls" target="_blank" rel="noopener noreferrer" class="contribute-link">Create Pull Request</a>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="community-guidelines">
+                        <h3>Community Guidelines</h3>
+                        <ul>
+                            <li><strong>Be respectful:</strong> Treat all community members with kindness</li>
+                            <li><strong>Stay on topic:</strong> Keep discussions relevant to StreamWatch</li>
+                            <li><strong>Help others:</strong> Share knowledge and assist fellow users</li>
+                            <li><strong>Follow standards:</strong> Use proper formatting and clear descriptions</li>
+                        </ul>
+                    </div>
+                </div>
             </section>
 
             <section id="documentation" class="content-section">

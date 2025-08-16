@@ -355,6 +355,18 @@ footer a:hover {
 }
 
 /* Responsive Design */
+@media (max-width: 1024px) {
+    nav ul li {
+        margin-left: 1rem;
+    }
+    nav ul li a {
+        font-size: 0.9rem;
+    }
+    .content-section {
+        max-width: 90%;
+    }
+}
+
 @media (max-width: 820px) {
     nav ul {
         display: none; /* Hide nav links */
@@ -362,10 +374,11 @@ footer a:hover {
         width: 100%;
         background-color: var(--surface-color);
         position: absolute;
-        top: 60px; /* Adjust based on header height */
+        top: 70px; /* Adjust based on header height */
         left: 0;
         padding: 1rem 0;
         box-shadow: 0 5px 10px rgba(0,0,0,0.2);
+        z-index: 999;
     }
 
     nav ul.active {
@@ -373,8 +386,14 @@ footer a:hover {
     }
 
     nav ul li {
-        margin: 1rem 0;
+        margin: 0.5rem 0;
         text-align: center;
+    }
+
+    nav ul li a {
+        padding: 0.5rem 1rem;
+        display: block;
+        border-radius: var(--border-radius);
     }
 
     .menu-toggle {
@@ -393,6 +412,46 @@ footer a:hover {
     .copy-button {
         margin-left: 0;
         margin-top: 0.5rem;
+    }
+    
+    .content-section {
+        padding: 3rem 3%;
+    }
+    
+    .content-section h2 {
+        font-size: 2rem;
+    }
+    
+    /* Make grids single column on mobile */
+    .platforms-grid,
+    .architecture-grid,
+    .installation-methods,
+    .command-grid,
+    .use-cases-grid,
+    .community-stats,
+    .contributing-ways {
+        grid-template-columns: 1fr;
+    }
+    
+    /* Stack code blocks vertically */
+    .code-block {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    
+    .code-block .copy-button {
+        margin-top: 0.5rem;
+        width: 100%;
+    }
+    
+    /* Make table responsive */
+    .comparison-table {
+        font-size: 0.9rem;
+    }
+    
+    .comparison-table th,
+    .comparison-table td {
+        padding: 0.5rem;
     }
 }
 
@@ -444,6 +503,482 @@ footer a:hover {
     background: var(--primary-color);
     color: #fff;
     box-shadow: 0 2px 8px rgba(0,168,255,0.15);
+}
+
+/* Platforms Grid */
+.platforms-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 1.5rem;
+    margin-bottom: 2rem;
+}
+
+.platform-item {
+    background-color: var(--surface-color);
+    padding: 1.5rem;
+    border-radius: var(--border-radius);
+    text-align: center;
+    box-shadow: var(--box-shadow);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.platform-item:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+}
+
+.platform-icon {
+    font-size: 2.5rem;
+    margin-bottom: 1rem;
+    display: block;
+}
+
+.platform-item h3 {
+    font-family: var(--heading-font);
+    font-size: 1.3rem;
+    color: var(--text-color);
+    margin-bottom: 0.5rem;
+}
+
+.platform-note {
+    background-color: var(--surface-color);
+    padding: 1rem;
+    border-radius: var(--border-radius);
+    margin-top: 1rem;
+    text-align: center;
+}
+
+/* Installation Methods */
+.installation-methods {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 2rem;
+    margin-bottom: 2rem;
+}
+
+.install-method {
+    background-color: var(--surface-color);
+    padding: 1.5rem;
+    border-radius: var(--border-radius);
+    box-shadow: var(--box-shadow);
+}
+
+.install-method h3 {
+    font-family: var(--heading-font);
+    font-size: 1.3rem;
+    color: var(--primary-color);
+    margin-bottom: 1rem;
+}
+
+.code-block {
+    background-color: #2a2a2a;
+    border: 1px solid #444;
+    border-radius: var(--border-radius);
+    padding: 1rem;
+    margin: 1rem 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+.code-block pre {
+    background: none;
+    padding: 0;
+    margin: 0;
+    flex-grow: 1;
+}
+
+.code-block code {
+    font-family: 'Courier New', Courier, monospace;
+    color: #00d4ff;
+    font-size: 0.95rem;
+}
+
+.system-installs, .mpv-installs {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.system-install .code-block {
+    margin: 0.5rem 0;
+}
+
+.prerequisites {
+    background-color: var(--surface-color);
+    padding: 1.5rem;
+    border-radius: var(--border-radius);
+    margin-top: 2rem;
+    box-shadow: var(--box-shadow);
+}
+
+/* Architecture Section */
+.architecture-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 2rem;
+    margin-bottom: 2rem;
+}
+
+.architecture-item {
+    background-color: var(--surface-color);
+    padding: 1.5rem;
+    border-radius: var(--border-radius);
+    box-shadow: var(--box-shadow);
+}
+
+.architecture-item h3 {
+    font-family: var(--heading-font);
+    font-size: 1.4rem;
+    color: var(--primary-color);
+    margin-bottom: 1rem;
+}
+
+.architecture-item ul {
+    list-style: none;
+    padding: 0;
+}
+
+.architecture-item li {
+    padding: 0.5rem 0;
+    border-bottom: 1px solid #333;
+}
+
+.architecture-item li:last-child {
+    border-bottom: none;
+}
+
+.improvements-timeline {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+.improvement-item {
+    display: flex;
+    gap: 1rem;
+    background-color: var(--surface-color);
+    padding: 1.5rem;
+    border-radius: var(--border-radius);
+    box-shadow: var(--box-shadow);
+}
+
+.improvement-version {
+    background-color: var(--primary-color);
+    color: white;
+    padding: 0.5rem 1rem;
+    border-radius: var(--border-radius);
+    font-weight: bold;
+    font-size: 0.9rem;
+    height: fit-content;
+    min-width: 80px;
+    text-align: center;
+}
+
+.improvement-content h4 {
+    color: var(--text-color);
+    margin-bottom: 0.5rem;
+}
+
+/* Performance Comparison */
+.comparison-table {
+    overflow-x: auto;
+    margin-bottom: 2rem;
+}
+
+.comparison-table table {
+    width: 100%;
+    border-collapse: collapse;
+    background-color: var(--surface-color);
+    border-radius: var(--border-radius);
+    overflow: hidden;
+    box-shadow: var(--box-shadow);
+}
+
+.comparison-table th,
+.comparison-table td {
+    padding: 1rem;
+    text-align: left;
+    border-bottom: 1px solid #333;
+}
+
+.comparison-table th {
+    background-color: #2a2a2a;
+    color: var(--primary-color);
+    font-weight: bold;
+}
+
+.streamwatch-metric {
+    color: #4CAF50;
+    font-weight: bold;
+}
+
+.improvement {
+    color: var(--primary-color);
+    font-weight: bold;
+}
+
+.benefits-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 1.5rem;
+}
+
+.benefit-item {
+    background-color: var(--surface-color);
+    padding: 1.5rem;
+    border-radius: var(--border-radius);
+    box-shadow: var(--box-shadow);
+}
+
+.benefit-item h4 {
+    color: var(--primary-color);
+    margin-bottom: 1rem;
+    font-size: 1.2rem;
+}
+
+/* Commands Section */
+.commands-section {
+    display: flex;
+    flex-direction: column;
+    gap: 2rem;
+}
+
+.command-category h3 {
+    color: var(--primary-color);
+    font-size: 1.5rem;
+    margin-bottom: 1rem;
+}
+
+.command-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 1rem;
+}
+
+.command-item {
+    background-color: var(--surface-color);
+    padding: 1rem;
+    border-radius: var(--border-radius);
+    box-shadow: var(--box-shadow);
+}
+
+.command-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background-color: #2a2a2a;
+    padding: 0.7rem 1rem;
+    border-radius: var(--border-radius);
+    margin-bottom: 0.5rem;
+}
+
+.command-header code {
+    font-family: 'Courier New', Courier, monospace;
+    color: #00d4ff;
+    font-size: 0.9rem;
+}
+
+.controls-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1rem;
+    margin-top: 1rem;
+}
+
+.control-item {
+    background-color: var(--surface-color);
+    padding: 0.7rem 1rem;
+    border-radius: var(--border-radius);
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+kbd {
+    background-color: #333;
+    color: var(--primary-color);
+    padding: 0.2rem 0.5rem;
+    border-radius: 4px;
+    font-family: monospace;
+    font-size: 0.8rem;
+    font-weight: bold;
+}
+
+/* FAQ Section */
+.faq-container {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.faq-item {
+    background-color: var(--surface-color);
+    border-radius: var(--border-radius);
+    overflow: hidden;
+    box-shadow: var(--box-shadow);
+}
+
+.faq-item summary {
+    padding: 1.2rem;
+    background-color: #2a2a2a;
+    cursor: pointer;
+    font-weight: bold;
+    color: var(--text-color);
+    border: none;
+    outline: none;
+    transition: background-color 0.2s ease;
+}
+
+.faq-item summary:hover {
+    background-color: #333;
+    color: var(--primary-color);
+}
+
+.faq-content {
+    padding: 1.2rem;
+}
+
+.faq-content ul {
+    margin: 1rem 0;
+    padding-left: 1.5rem;
+}
+
+.faq-content code {
+    background-color: #2a2a2a;
+    padding: 0.2rem 0.5rem;
+    border-radius: 4px;
+    font-family: 'Courier New', Courier, monospace;
+    color: #00d4ff;
+    font-size: 0.9rem;
+}
+
+/* Use Cases Section */
+.use-cases-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 2rem;
+}
+
+.use-case-item {
+    background-color: var(--surface-color);
+    padding: 1.5rem;
+    border-radius: var(--border-radius);
+    box-shadow: var(--box-shadow);
+    transition: transform 0.2s ease;
+}
+
+.use-case-item:hover {
+    transform: translateY(-2px);
+}
+
+.use-case-item h3 {
+    color: var(--primary-color);
+    font-size: 1.3rem;
+    margin-bottom: 1rem;
+}
+
+.use-case-item ul {
+    list-style: none;
+    padding: 0;
+}
+
+.use-case-item li {
+    padding: 0.3rem 0;
+    color: var(--text-muted-color);
+}
+
+.use-case-item li:before {
+    content: "✓ ";
+    color: var(--primary-color);
+    font-weight: bold;
+}
+
+/* Community Section */
+.community-stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 2rem;
+    margin-bottom: 2rem;
+}
+
+.stat-item {
+    background-color: var(--surface-color);
+    padding: 1.5rem;
+    border-radius: var(--border-radius);
+    text-align: center;
+    box-shadow: var(--box-shadow);
+}
+
+.stat-item h3 {
+    color: var(--primary-color);
+    font-size: 1.4rem;
+    margin-bottom: 1rem;
+}
+
+.stat-link, .contribute-link {
+    display: inline-block;
+    background-color: var(--primary-color);
+    color: white;
+    padding: 0.5rem 1rem;
+    text-decoration: none;
+    border-radius: var(--border-radius);
+    font-weight: bold;
+    margin-top: 0.5rem;
+    transition: background-color 0.2s ease;
+}
+
+.stat-link:hover, .contribute-link:hover {
+    background-color: var(--secondary-color);
+}
+
+.contributing-ways {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 1.5rem;
+    margin-bottom: 2rem;
+}
+
+.contribute-item {
+    background-color: var(--surface-color);
+    padding: 1.5rem;
+    border-radius: var(--border-radius);
+    box-shadow: var(--box-shadow);
+    text-align: center;
+}
+
+.contribute-item h4 {
+    color: var(--primary-color);
+    font-size: 1.2rem;
+    margin-bottom: 1rem;
+}
+
+.community-guidelines {
+    background-color: var(--surface-color);
+    padding: 1.5rem;
+    border-radius: var(--border-radius);
+    box-shadow: var(--box-shadow);
+}
+
+.community-guidelines h3 {
+    color: var(--primary-color);
+    margin-bottom: 1rem;
+}
+
+.community-guidelines ul {
+    list-style: none;
+    padding: 0;
+}
+
+.community-guidelines li {
+    padding: 0.5rem 0;
+    border-bottom: 1px solid #333;
+}
+
+.community-guidelines li:last-child {
+    border-bottom: none;
 }
 
 /* Add hover/focus transitions to nav links and buttons */
