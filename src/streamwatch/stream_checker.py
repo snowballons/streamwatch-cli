@@ -32,6 +32,73 @@ from .stream_utils import parse_url_metadata  # IMPORT THE NEW FUNCTION
 logger = logging.getLogger(config.APP_NAME + ".stream_checker")
 
 
+def sanitize_category_string(category: str) -> str:
+    """
+    Sanitize category string to ensure it passes Pydantic validation.
+    
+    The category validation only allows:
+    letters, numbers, spaces, hyphens, underscores, dots, parentheses, brackets, ampersands, forward slashes
+    
+    Args:
+        category: Raw category string from metadata
+        
+    Returns:
+        Sanitized category string that passes validation
+    """
+    if not category or category == "N/A":
+        return "N/A"
+        
+    # Convert to string and strip
+    category = str(category).strip()
+    
+    # Remove or replace invalid characters
+    # Keep only allowed characters: [a-zA-Z0-9\s\-_\.\(\)\[\]\&/]
+    import re
+    
+    # Replace common problematic characters with safe alternatives
+    replacements = {
+        ':': ' -',      # colon to dash
+        ';': ',',       # semicolon to comma
+        '"': '',        # remove quotes
+        "'": '',        # remove apostrophes
+        '`': '',        # remove backticks
+        '*': '',        # remove asterisks
+        '+': '',        # remove plus signs
+        '=': '',        # remove equals
+        '|': ' ',       # pipe to space
+        '\\': ' ',      # backslash to space
+        '~': '',        # remove tilde
+        '#': '',        # remove hash
+        '%': '',        # remove percent
+        '^': '',        # remove caret
+        '?': '',        # remove question mark
+        '!': '',        # remove exclamation
+        '<': '(',       # less-than to parenthesis
+        '>': ')',       # greater-than to parenthesis
+        '{': '(',       # curly brace to parenthesis
+        '}': ')',       # curly brace to parenthesis
+        '@': '',        # remove at symbol
+        '$': '',        # remove dollar sign
+    }
+    
+    for old_char, new_char in replacements.items():
+        category = category.replace(old_char, new_char)
+    
+    # Keep only allowed characters using regex
+    # Allowed: letters, numbers, spaces, hyphens, underscores, dots, parentheses, brackets, ampersands, forward slashes
+    category = re.sub(r'[^a-zA-Z0-9\s\-_\.\(\)\[\]\&/]', '', category)
+    
+    # Clean up multiple spaces and trim
+    category = re.sub(r'\s+', ' ', category).strip()
+    
+    # Limit length to prevent validation errors
+    if len(category) > 100:  # MAX_CATEGORY_LENGTH from validators
+        category = category[:97] + '...'
+    
+    # Return N/A if empty after sanitization
+    return category if category else "N/A"
+
+
 def _get_retry_config() -> RetryConfig:
     """Get retry configuration from app config."""
     return RetryConfig(
@@ -693,7 +760,10 @@ def fetch_live_streams(
                             
                             # Extract category using existing logic
                             platform = stream_data.get("platform", "Unknown")
-                            category = extract_category_keywords((success, json_data), platform)
+                            raw_category = extract_category_keywords((success, json_data), platform)
+                            
+                            # Sanitize category to ensure it passes validation
+                            category = sanitize_category_string(raw_category)
                     except (json.JSONDecodeError, KeyError) as e:
                         logger.debug(f"Could not parse metadata for {url}: {e}")
                 
