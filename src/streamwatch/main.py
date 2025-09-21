@@ -13,42 +13,17 @@ from .app import StreamWatchApp
 # --- Setup Logging ---
 def setup_logging() -> None:
     """Sets up logging configuration for the application."""
-    log_dir = config.USER_CONFIG_DIR / "logs"
-    log_dir.mkdir(parents=True, exist_ok=True)
-    log_file = log_dir / "streamwatch.log"
-
-    # Max 1MB per log file, keep 3 backup logs
-    file_handler = RotatingFileHandler(
-        log_file, maxBytes=1 * 1024 * 1024, backupCount=3, encoding="utf-8"
+    from .logging_config import setup_logging as setup_enhanced_logging
+    
+    # Use enhanced logging configuration
+    setup_enhanced_logging(
+        log_level="INFO",
+        enable_console=True,
+        enable_colors=True
     )
-    # More detailed format for file logs
-    file_formatter = logging.Formatter(
-        "%(asctime)s - %(name)s - %(levelname)s - %(module)s.%(funcName)s:%(lineno)d - %(message)s"
-    )
-    file_handler.setFormatter(file_formatter)
-    file_handler.setLevel(logging.DEBUG)  # Log everything DEBUG and above to file
-
-    # Console handler for rich (optional, rich can handle its own console output)
-    # If you want to use Python's logging for console as well, styled by rich:
-    # from rich.logging import RichHandler
-    # console_handler = RichHandler(rich_tracebacks=True, console=ui.console, show_path=False)
-    # console_handler.setLevel(logging.INFO) # Log INFO and above to console
-
-    # Get the root logger
-    root_logger = logging.getLogger()  # Get root logger
-    if (
-        not root_logger.handlers
-    ):  # Add handlers only if not already configured (e.g. by other imports)
-        root_logger.setLevel(logging.DEBUG)  # Set root logger level to lowest (DEBUG)
-        root_logger.addHandler(file_handler)
-        # root_logger.addHandler(console_handler) # Uncomment if using RichHandler for console
-
-    # Example: Get a logger specific to your app's root package
-    # logger = logging.getLogger(config.APP_NAME)
-    # if not logger.handlers:
-    #     logger.setLevel(logging.DEBUG)
-    #     logger.addHandler(file_handler)
-    # logger.addHandler(console_handler) # If you want this specific logger to also output to console
+    
+    logger = logging.getLogger(config.APP_NAME)
+    logger.info("Enhanced logging system initialized")
 
 
 def initial_streamlink_check() -> bool:

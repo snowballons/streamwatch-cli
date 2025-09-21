@@ -178,6 +178,7 @@ class ServiceRegistry:
         from .menu_handler import MenuHandler
         from .playback_controller import PlaybackController
         from .stream_manager import StreamManager
+        from .stream_checker import StreamChecker
 
         logger.info("Configuring DI container with application services")
 
@@ -188,6 +189,24 @@ class ServiceRegistry:
 
         # Register the database as a singleton
         container.register_singleton("database", lambda: get_database())
+
+        # Register StreamChecker with dependencies
+        def create_stream_checker():
+            try:
+                from .cache import get_cache
+                cache = get_cache()
+            except ImportError:
+                cache = None
+            
+            try:
+                from .rate_limiter import get_rate_limiter
+                rate_limiter = get_rate_limiter()
+            except ImportError:
+                rate_limiter = None
+            
+            return StreamChecker(cache=cache, rate_limiter=rate_limiter)
+
+        container.register_singleton("stream_checker", create_stream_checker)
 
         # Register StreamManager and inject the database
         container.register_singleton(

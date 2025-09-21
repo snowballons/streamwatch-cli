@@ -15,21 +15,15 @@ from typing import Any, Dict, List, Optional, Tuple, Union
 import validators
 
 from . import config
+from .constants import ValidationLimits, SecurityConstants
 
 logger = logging.getLogger(config.APP_NAME + ".validators")
 
-# Security constants
-MAX_URL_LENGTH = 2048
-MAX_ALIAS_LENGTH = 200
-MAX_USERNAME_LENGTH = 100
-MAX_CATEGORY_LENGTH = 100
-MAX_TITLE_LENGTH = 500
-MAX_FILE_PATH_LENGTH = 1000
-
-# Allowed characters for different fields
-ALIAS_ALLOWED_CHARS = re.compile(r"^[a-zA-Z0-9\s\-_\.\(\)\[\]]+$")
-USERNAME_ALLOWED_CHARS = re.compile(r"^[a-zA-Z0-9\-_\.]+$")
-CATEGORY_ALLOWED_CHARS = re.compile(r"^[a-zA-Z0-9\s\-_\.\(\)\[\]&/]+$")
+# Compile regex patterns for better performance
+ALIAS_ALLOWED_CHARS = re.compile(SecurityConstants.ALIAS_PATTERN)
+USERNAME_ALLOWED_CHARS = re.compile(SecurityConstants.USERNAME_PATTERN)
+CATEGORY_ALLOWED_CHARS = re.compile(SecurityConstants.CATEGORY_PATTERN)
+CONFIG_KEY_ALLOWED_CHARS = re.compile(SecurityConstants.CONFIG_KEY_PATTERN)
 
 # Known streaming platforms and their URL patterns
 SUPPORTED_PLATFORMS: Dict[str, Dict[str, Any]] = {
@@ -57,26 +51,8 @@ SUPPORTED_PLATFORMS: Dict[str, Dict[str, Any]] = {
     },
 }
 
-# Dangerous patterns to block
-DANGEROUS_PATTERNS = [
-    r"javascript:",
-    r"data:",
-    r"vbscript:",
-    r"file:",
-    r"ftp:",
-    r"<script",
-    r"</script>",
-    r"<iframe",
-    r"</iframe>",
-    r"<object",
-    r"</object>",
-    r"<embed",
-    r"</embed>",
-    r"onload=",
-    r"onerror=",
-    r"onclick=",
-    r"onmouseover=",
-]
+# Dangerous patterns to block (from constants)
+DANGEROUS_PATTERNS = SecurityConstants.DANGEROUS_PATTERNS
 
 
 class ValidationError(Exception):
@@ -134,9 +110,14 @@ def validate_url(url: str, strict: bool = True) -> Tuple[bool, str, Dict[str, An
         raise ValidationError("URL must be a string", "url", url)
 
     # Basic length check
-    if len(url) > MAX_URL_LENGTH:
+    if len(url) > ValidationLimits.MAX_URL_LENGTH:
         raise ValidationError(
-            f"URL too long (max {MAX_URL_LENGTH} characters)", "url", url
+            f"URL too long (max {ValidationLimits.MAX_URL_LENGTH} characters)", "url", url
+        )
+    
+    if len(url) < ValidationLimits.MIN_URL_LENGTH:
+        raise ValidationError(
+            f"URL too short (min {ValidationLimits.MIN_URL_LENGTH} characters)", "url", url
         )
 
     # Check for dangerous patterns
@@ -247,12 +228,12 @@ def validate_alias(alias: str) -> str:
     alias = alias.strip()
 
     # Check length
-    if not alias:
+    if len(alias) < ValidationLimits.MIN_ALIAS_LENGTH:
         raise ValidationError("Alias cannot be empty", "alias", alias)
 
-    if len(alias) > MAX_ALIAS_LENGTH:
+    if len(alias) > ValidationLimits.MAX_ALIAS_LENGTH:
         raise ValidationError(
-            f"Alias too long (max {MAX_ALIAS_LENGTH} characters)", "alias", alias
+            f"Alias too long (max {ValidationLimits.MAX_ALIAS_LENGTH} characters)", "alias", alias
         )
 
     # Check for dangerous patterns
@@ -299,9 +280,9 @@ def validate_username(username: str) -> str:
     if not username:
         raise ValidationError("Username cannot be empty", "username", username)
 
-    if len(username) > MAX_USERNAME_LENGTH:
+    if len(username) > ValidationLimits.MAX_USERNAME_LENGTH:
         raise ValidationError(
-            f"Username too long (max {MAX_USERNAME_LENGTH} characters)",
+            f"Username too long (max {ValidationLimits.MAX_USERNAME_LENGTH} characters)",
             "username",
             username,
         )
@@ -351,9 +332,9 @@ def validate_category(category: str) -> str:
         return "N/A"
 
     # Check length
-    if len(category) > MAX_CATEGORY_LENGTH:
+    if len(category) > ValidationLimits.MAX_CATEGORY_LENGTH:
         raise ValidationError(
-            f"Category too long (max {MAX_CATEGORY_LENGTH} characters)",
+            f"Category too long (max {ValidationLimits.MAX_CATEGORY_LENGTH} characters)",
             "category",
             category,
         )

@@ -144,6 +144,7 @@ class StreamDatabase:
 
         self.db_path = Path(db_path)
         self._local = threading.local()
+        self._closed = False
 
         # Ensure database directory exists
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
@@ -161,7 +162,10 @@ class StreamDatabase:
     @property
     def connection(self) -> sqlite3.Connection:
         """Get thread-local database connection."""
-        if not hasattr(self._local, "connection"):
+        if self._closed:
+            raise DatabaseConnectionError("Database has been closed")
+            
+        if not hasattr(self._local, "connection") or self._local.connection is None:
             try:
                 conn = sqlite3.connect(
                     str(self.db_path),
@@ -191,17 +195,33 @@ class StreamDatabase:
         return self._local.connection
 
     @contextmanager
-    def transaction(self) -> sqlite3.Connection:
-        """Context manager for database transactions."""
+    def get_connection(self):
+        """Context manager for safe database connection access."""
         conn = self.connection
         try:
-            conn.execute("BEGIN")
             yield conn
-            conn.commit()
-        except Exception as e:
-            conn.rollback()
-            logger.error(f"Transaction rolled back: {e}")
+        except Exception:
+            # Connection might be in bad state, clear it
+            if hasattr(self._local, "connection"):
+                try:
+                    self._local.connection.close()
+                except Exception:
+                    pass
+                self._local.connection = None
             raise
+
+    @contextmanager
+    def transaction(self) -> sqlite3.Connection:
+        """Context manager for database transactions."""
+        with self.get_connection() as conn:
+            try:
+                conn.execute("BEGIN")
+                yield conn
+                conn.commit()
+            except Exception as e:
+                conn.rollback()
+                logger.error(f"Transaction rolled back: {e}")
+                raise
 
     def _initialize_database(self) -> None:
         """Initialize database schema and default data."""
@@ -223,9 +243,10 @@ class StreamDatabase:
     def _get_schema_version(self) -> int:
         """Get current database schema version."""
         try:
-            cursor = self.connection.execute("SELECT MAX(version) FROM schema_info")
-            result = cursor.fetchone()
-            return result[0] if result[0] is not None else 0
+            with self.get_connection() as conn:
+                cursor = conn.execute("SELECT MAX(version) FROM schema_info")
+                result = cursor.fetchone()
+                return result[0] if result[0] is not None else 0
         except sqlite3.Error:
             return 0
 
@@ -249,10 +270,33 @@ class StreamDatabase:
             raise DatabaseMigrationError(f"Schema migration failed: {e}")
 
     def close(self) -> None:
-        """Close database connection."""
-        if hasattr(self._local, "connection"):
-            self._local.connection.close()
-            delattr(self._local, "connection")
+        """Close database connection and mark as closed."""
+        if not self._closed:
+            if hasattr(self._local, "connection") and self._local.connection:
+                try:
+                    self._local.connection.close()
+                except Exception as e:
+                    logger.warning(f"Error closing database connection: {e}")
+                finally:
+                    self._local.connection = None
+            self._closed = True
+            logger.debug("Database connection closed")
+
+    def __del__(self):
+        """Destructor to ensure connections are closed."""
+        try:
+            self.close()
+        except Exception:
+            # Ignore errors during cleanup
+            pass
+
+    def __enter__(self):
+        """Context manager entry."""
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        """Context manager exit with cleanup."""
+        self.close()
 
     def get_database_info(self) -> Dict[str, Any]:
         """Get database information for debugging."""
@@ -345,8 +389,9 @@ class StreamDatabase:
 
             query += " ORDER BY s.alias"
 
-            cursor = self.connection.execute(query)
-            rows = cursor.fetchall()
+            with self.get_connection() as conn:
+                cursor = conn.execute(query)
+                rows = cursor.fetchall()
 
             streams = []
             for row in rows:
@@ -483,21 +528,22 @@ class StreamDatabase:
             Platform ID
         """
         try:
-            # Try to get existing platform
-            cursor = self.connection.execute(
-                "SELECT id FROM platforms WHERE name = ?", (platform_name,)
-            )
-            row = cursor.fetchone()
+            with self.get_connection() as conn:
+                # Try to get existing platform
+                cursor = conn.execute(
+                    "SELECT id FROM platforms WHERE name = ?", (platform_name,)
+                )
+                row = cursor.fetchone()
 
-            if row:
-                return row[0]
+                if row:
+                    return row[0]
 
-            # Create new platform
-            cursor = self.connection.execute(
-                "INSERT INTO platforms (name) VALUES (?)", (platform_name,)
-            )
+                # Create new platform
+                cursor = conn.execute(
+                    "INSERT INTO platforms (name) VALUES (?)", (platform_name,)
+                )
 
-            return cursor.lastrowid
+                return cursor.lastrowid
 
         except sqlite3.Error as e:
             raise DatabaseError(f"Failed to get/create platform: {e}")

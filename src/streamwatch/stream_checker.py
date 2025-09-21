@@ -4,7 +4,7 @@ import re
 import subprocess
 import sys
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any, Dict, List, Optional, Tuple, Union, Protocol
 
 from . import config
 from .cache import get_cache
@@ -26,7 +26,304 @@ from .resilience import (
     get_circuit_breaker,
     resilient_operation,
 )
-from .stream_utils import parse_url_metadata  # IMPORT THE NEW FUNCTION
+from .result import Result, safe_call, StreamResult
+from .stream_utils import parse_url_metadata
+from .performance import timed, measure_time, get_stream_performance_tracker
+
+
+# Get a logger for this module
+logger = logging.getLogger(config.APP_NAME + ".stream_checker")
+
+
+class StreamCheckResult:
+    """
+    Represents the result of a stream liveness check with detailed error information.
+    """
+
+    def __init__(
+        self, is_live: bool, url: str, error: Optional[StreamlinkError] = None
+    ):
+        """
+        Initialize StreamCheckResult.
+
+        Args:
+            is_live: Whether the stream is live
+            url: The stream URL that was checked
+            error: Detailed error information if check failed
+        """
+        self.is_live = is_live
+        self.url = url
+        self.error = error
+
+    def to_dict(self) -> Dict[str, Any]:
+        """Convert result to dictionary for structured logging/debugging."""
+        result = {"is_live": self.is_live, "url": self.url}
+        if self.error:
+            result["error"] = self.error.to_dict()
+        return result
+
+
+class MetadataResult:
+    """
+    Represents the result of a stream metadata fetch with detailed error information.
+    """
+
+    def __init__(
+        self,
+        success: bool,
+        url: str,
+        json_data: Optional[str] = None,
+        error: Optional[StreamlinkError] = None,
+    ):
+        """
+        Initialize MetadataResult.
+
+        Args:
+            success: Whether the metadata fetch was successful
+            url: The stream URL that was processed
+            json_data: The JSON metadata string if successful
+            error: Detailed error information if fetch failed
+        """
+        self.success = success
+        self.url = url
+        self.json_data = json_data
+        self.error = error
+
+    def to_dict(self) -> Dict[str, Any]:
+        """Convert result to dictionary for structured logging/debugging."""
+        result = {
+            "success": self.success,
+            "url": self.url,
+            "has_json_data": self.json_data is not None,
+        }
+        if self.error:
+            result["error"] = self.error.to_dict()
+        return result
+
+
+# --- Dependency Injection Interfaces ---
+
+class CacheInterface(Protocol):
+    """Interface for cache implementations."""
+    def get(self, key: str) -> Optional[StreamStatus]: ...
+    def put(self, key: str, value: StreamStatus) -> None: ...
+
+
+class RateLimiterInterface(Protocol):
+    """Interface for rate limiter implementations."""
+    def acquire(self, key: str, timeout: float = None) -> bool: ...
+
+
+class ConfigInterface(Protocol):
+    """Interface for configuration access."""
+    def get_cache_enabled(self) -> bool: ...
+    def get_rate_limit_enabled(self) -> bool: ...
+    def get_streamlink_timeout_liveness(self) -> int: ...
+    def get_streamlink_timeout_metadata(self) -> int: ...
+    def get_max_workers_liveness(self) -> int: ...
+    def get_max_workers_metadata(self) -> int: ...
+
+
+# --- StreamChecker Class with Dependency Injection ---
+
+class StreamChecker:
+    """
+    Stream checking service with dependency injection for better testability.
+    """
+    
+    def __init__(
+        self,
+        cache: Optional[CacheInterface] = None,
+        rate_limiter: Optional[RateLimiterInterface] = None,
+        config_provider: Optional[ConfigInterface] = None
+    ):
+        """
+        Initialize StreamChecker with dependencies.
+        
+        Args:
+            cache: Cache implementation (optional)
+            rate_limiter: Rate limiter implementation (optional)  
+            config_provider: Configuration provider (optional)
+        """
+        self.cache = cache
+        self.rate_limiter = rate_limiter
+        self.config = config_provider or config
+        self.logger = logging.getLogger(config.APP_NAME + ".stream_checker")
+    
+    def check_stream_liveness(self, url: str) -> StreamResult:
+        """
+        Check stream liveness with dependency injection.
+        
+        Args:
+            url: Stream URL to check
+            
+        Returns:
+            Result containing StreamCheckResult or error message
+        """
+        if not url or not isinstance(url, str):
+            return Result.Err("Invalid URL provided")
+        
+        # Check cache if available
+        if self.cache and self.config.get_cache_enabled():
+            cached_status = self.cache.get(url)
+            if cached_status is not None:
+                self.logger.debug(f"Using cached status for {url}: {cached_status.value}")
+                result = StreamCheckResult(
+                    is_live=(cached_status == StreamStatus.LIVE),
+                    url=url
+                )
+                return Result.Ok(result)
+        
+        # Apply rate limiting if available
+        if self.rate_limiter and self.config.get_rate_limit_enabled():
+            timeout = self.config.get_streamlink_timeout_liveness()
+            if not self.rate_limiter.acquire(url, timeout=timeout):
+                return Result.Err(f"Rate limit exceeded for {url}")
+        
+        # Perform the actual check
+        check_result = safe_call(self._check_stream_core, url)
+        
+        if check_result.is_err():
+            return Result.Err(f"Stream check failed: {check_result.unwrap_err()}")
+        
+        result = check_result.unwrap()
+        
+        # Update cache if available
+        if self.cache and self.config.get_cache_enabled():
+            status = StreamStatus.LIVE if result.is_live else StreamStatus.OFFLINE
+            if result.error and isinstance(result.error, StreamNotFoundError):
+                status = StreamStatus.OFFLINE
+            elif result.error:
+                status = StreamStatus.ERROR
+                
+            self.cache.put(url, status)
+            self.logger.debug(f"Cached status for {url}: {status.value}")
+        
+        return Result.Ok(result)
+    
+    def fetch_metadata(self, url: str) -> StreamResult:
+        """
+        Fetch stream metadata with dependency injection.
+        
+        Args:
+            url: Stream URL to fetch metadata for
+            
+        Returns:
+            Result containing MetadataResult or error message
+        """
+        if not url or not isinstance(url, str):
+            return Result.Err("Invalid URL provided")
+        
+        # Apply rate limiting if available
+        if self.rate_limiter and self.config.get_rate_limit_enabled():
+            timeout = self.config.get_streamlink_timeout_metadata()
+            if not self.rate_limiter.acquire(url, timeout=timeout):
+                return Result.Err(f"Rate limit exceeded for {url}")
+        
+        # Perform the metadata fetch
+        metadata_result = safe_call(self._fetch_metadata_core, url)
+        
+        if metadata_result.is_err():
+            return Result.Err(f"Metadata fetch failed: {metadata_result.unwrap_err()}")
+        
+        return Result.Ok(metadata_result.unwrap())
+    
+    def _check_stream_core(self, url: str) -> StreamCheckResult:
+        """Core stream checking logic without dependencies."""
+        command = ["streamlink"]
+        if hasattr(self.config, 'get_twitch_disable_ads') and self.config.get_twitch_disable_ads():
+            command.append("--twitch-disable-ads")
+        command.append(url)
+
+        try:
+            process = subprocess.run(
+                command,
+                capture_output=True,
+                text=True,
+                timeout=self.config.get_streamlink_timeout_liveness(),
+                check=False,
+            )
+
+            if process.returncode == 0 and "Available streams:" in process.stdout:
+                self.logger.debug(f"Stream is live: {url}")
+                return StreamCheckResult(is_live=True, url=url)
+
+            # Stream is not live or error occurred
+            error = categorize_streamlink_error(
+                stderr=process.stderr or "",
+                stdout=process.stdout or "",
+                return_code=process.returncode,
+                url=url,
+            )
+
+            if isinstance(error, StreamNotFoundError):
+                self.logger.info(f"Stream is not live: {url} - {error}")
+            else:
+                self.logger.warning(f"Stream check failed: {url} - {error}")
+
+            return StreamCheckResult(is_live=False, url=url, error=error)
+
+        except subprocess.TimeoutExpired:
+            error = TimeoutError(f"Timeout expired checking liveness for: {url}", url=url)
+            self.logger.warning(f"Timeout expired checking liveness for: {url}")
+            return StreamCheckResult(is_live=False, url=url, error=error)
+
+        except Exception as e:
+            error = StreamlinkError(f"Unexpected error checking liveness: {str(e)}", url=url)
+            self.logger.exception(f"Error checking liveness for {url}")
+            return StreamCheckResult(is_live=False, url=url, error=error)
+    
+    def _fetch_metadata_core(self, url: str) -> "MetadataResult":
+        """Core metadata fetching logic without dependencies."""
+        command = ["streamlink", "--json", url]
+        
+        try:
+            process = subprocess.run(
+                command,
+                capture_output=True,
+                text=True,
+                timeout=self.config.get_streamlink_timeout_metadata(),
+                check=False,
+            )
+            
+            if process.returncode == 0 and process.stdout.strip():
+                return MetadataResult(success=True, url=url, json_data=process.stdout.strip())
+            
+            error = categorize_streamlink_error(
+                stderr=process.stderr or "",
+                stdout=process.stdout or "",
+                return_code=process.returncode,
+                url=url,
+            )
+            
+            return MetadataResult(success=False, url=url, error=error)
+            
+        except subprocess.TimeoutExpired:
+            error = TimeoutError(f"Timeout expired fetching metadata for: {url}", url=url)
+            return MetadataResult(success=False, url=url, error=error)
+            
+        except Exception as e:
+            error = StreamlinkError(f"Unexpected error fetching metadata: {str(e)}", url=url)
+            return MetadataResult(success=False, url=url, error=error)
+
+
+# --- Factory Function for Backward Compatibility ---
+
+def create_stream_checker() -> StreamChecker:
+    """Create StreamChecker with default dependencies."""
+    try:
+        from .cache import get_cache
+        cache = get_cache()
+    except ImportError:
+        cache = None
+    
+    try:
+        from .rate_limiter import get_rate_limiter
+        rate_limiter = get_rate_limiter()
+    except ImportError:
+        rate_limiter = None
+    
+    return StreamChecker(cache=cache, rate_limiter=rate_limiter)
 
 # Get a logger for this module
 logger = logging.getLogger(config.APP_NAME + ".stream_checker")
@@ -389,10 +686,84 @@ def get_stream_metadata_json(url: str) -> Tuple[bool, str]:
         return (False, str(e))
 
 
+def _build_metadata_command(url: str) -> List[str]:
+    """
+    Build streamlink command for metadata fetching.
+    
+    Args:
+        url: Stream URL
+        
+    Returns:
+        Command list for subprocess
+    """
+    command = ["streamlink", "--json", url]
+    
+    # Add Twitch-specific flags if needed
+    if config.get_twitch_disable_ads() and "twitch.tv" in url:
+        command.insert(1, "--twitch-disable-ads")
+    
+    return command
+
+
+def _validate_json_response(stdout: str, url: str) -> MetadataResult:
+    """
+    Validate JSON response from streamlink.
+    
+    Args:
+        stdout: Raw stdout from streamlink
+        url: Stream URL for error context
+        
+    Returns:
+        MetadataResult with validation outcome
+    """
+    if not stdout or not stdout.strip():
+        error = StreamlinkError("Empty JSON response", url=url)
+        return MetadataResult(success=False, url=url, error=error)
+    
+    try:
+        # Validate JSON format
+        json.loads(stdout)
+        return MetadataResult(success=True, json_data=stdout.strip(), url=url)
+    except json.JSONDecodeError as e:
+        error = StreamlinkError(
+            f"Invalid JSON response: {str(e)}",
+            url=url,
+            stdout=stdout
+        )
+        logger.warning(f"Could not process JSON for {url}: {e}")
+        return MetadataResult(success=False, url=url, error=error)
+
+
+def _handle_metadata_process_result(process: subprocess.CompletedProcess, url: str) -> MetadataResult:
+    """
+    Handle the result of metadata subprocess execution.
+    
+    Args:
+        process: Completed subprocess
+        url: Stream URL for error context
+        
+    Returns:
+        MetadataResult with processed outcome
+    """
+    if process.returncode == 0 and process.stdout:
+        return _validate_json_response(process.stdout, url)
+    
+    # Metadata fetch failed - categorize the error
+    error = categorize_streamlink_error(
+        stderr=process.stderr or "",
+        stdout=process.stdout or "",
+        return_code=process.returncode,
+        url=url,
+    )
+    
+    logger.warning(f"streamlink --json for {url} failed - {error}")
+    return MetadataResult(success=False, url=url, error=error)
+
+
 def _get_stream_metadata_core(url: str) -> "MetadataResult":
     """
     Core implementation for fetching stream metadata.
-    This is the base function without resilience patterns.
+    Refactored into smaller, focused functions.
 
     Args:
         url: The stream URL to get metadata for
@@ -400,49 +771,18 @@ def _get_stream_metadata_core(url: str) -> "MetadataResult":
     Returns:
         MetadataResult: Detailed result with error categorization
     """
-    command = ["streamlink", "--twitch-disable-ads", url, "--json"]
-    if (
-        config.get_twitch_disable_ads() and "twitch.tv" in url
-    ):  # Ensure flag is relevant
-        pass  # Already included --twitch-disable-ads
-    elif "--twitch-disable-ads" in command and "twitch.tv" not in url:
-        command.remove("--twitch-disable-ads")
-
+    command = _build_metadata_command(url)
+    
     try:
         process = subprocess.run(
             command,
             capture_output=True,
             text=True,
-            timeout=config.get_streamlink_timeout_metadata(),  # Slightly longer timeout for JSON
-            check=False,  # Don't crash on non-zero, parse stderr
+            timeout=config.get_streamlink_timeout_metadata(),
+            check=False,
         )
-
-        if process.returncode == 0 and process.stdout:
-            try:
-                # Validate JSON format
-                json.loads(process.stdout)  # This will raise if invalid JSON
-                return MetadataResult(success=True, json_data=process.stdout, url=url)
-            except json.JSONDecodeError as e:
-                error = StreamlinkError(
-                    f"Invalid JSON response: {str(e)}",
-                    url=url,
-                    stdout=process.stdout,
-                    stderr=process.stderr,
-                    return_code=process.returncode,
-                )
-                logger.warning(f"Could not process JSON for {url}: {e}")
-                return MetadataResult(success=False, url=url, error=error)
-
-        # Metadata fetch failed - categorize the error
-        error = categorize_streamlink_error(
-            stderr=process.stderr or "",
-            stdout=process.stdout or "",
-            return_code=process.returncode,
-            url=url,
-        )
-
-        logger.warning(f"streamlink --json for {url} failed - {error}")
-        return MetadataResult(success=False, url=url, error=error)
+        
+        return _handle_metadata_process_result(process, url)
 
     except subprocess.TimeoutExpired:
         error = TimeoutError(f"Timeout fetching JSON metadata for {url}", url=url)
@@ -455,7 +795,6 @@ def _get_stream_metadata_core(url: str) -> "MetadataResult":
             "streamlink command not found during JSON metadata fetch."
         )
     except Exception as e:
-        # Wrap unexpected exceptions in StreamlinkError
         error = StreamlinkError(
             f"Unexpected error fetching metadata: {str(e)}", url=url
         )
@@ -673,11 +1012,13 @@ def extract_category_keywords(
     return "N/A"
 
 
+@timed("fetch_live_streams")
 def fetch_live_streams(
     all_configured_streams_data: List[Dict[str, str]],
 ) -> List[Dict[str, Any]]:
     """
     Fetches the list of currently live streams with enhanced metadata.
+    Optimized with proper batching and error handling.
 
     Args:
         all_configured_streams_data: List of configured stream dictionaries
@@ -689,99 +1030,175 @@ def fetch_live_streams(
         logger.info("No configured streams to check.")
         return []
 
-    all_configured_urls = [s["url"] for s in all_configured_streams_data]
-    url_to_alias_map = {
-        s["url"]: s.get("alias", "") for s in all_configured_streams_data
-    }
-
-    logger.info("Checking stream liveness, please wait...")
-    live_stream_candidates = []  # URLs that are live
-
-    # Phase 1: Quick Liveness Check
-    with ThreadPoolExecutor(max_workers=config.get_max_workers_liveness()) as executor:
-        future_to_url = {
-            executor.submit(is_stream_live_for_check, url): url
-            for url in all_configured_urls
-        }
-        for future in as_completed(future_to_url):
-            (
-                is_live,
-                url,
-            ) = future.result()  # is_stream_live_for_check must return (bool, url)
-            if is_live:
-                live_stream_candidates.append(url)
-
+    logger.info(f"Checking {len(all_configured_streams_data)} streams for liveness...")
+    
+    # Phase 1: Optimized batch liveness check
+    with measure_time("batch_liveness_check", stream_count=len(all_configured_streams_data)):
+        live_stream_candidates = _batch_check_liveness(all_configured_streams_data)
+    
     if not live_stream_candidates:
         logger.info("No streams appear to be live based on initial check.")
         return []
 
     logger.info(f"Found {len(live_stream_candidates)} potentially live stream(s).")
-    logger.info("Fetching stream metadata...")
-
-    # Phase 2: Fetch metadata for live streams
-    live_streams_info = []
-    url_to_details_map = {s["url"]: s for s in all_configured_streams_data}
     
-    with ThreadPoolExecutor(max_workers=config.get_max_workers_metadata()) as executor:
+    # Phase 2: Optimized batch metadata fetch
+    with measure_time("batch_metadata_fetch", stream_count=len(live_stream_candidates)):
+        live_streams_info = _batch_fetch_metadata(live_stream_candidates, all_configured_streams_data)
+
+    # Track performance
+    tracker = get_stream_performance_tracker()
+    tracker.track_batch_operation("stream_check", len(all_configured_streams_data), 0)  # Duration tracked by decorator
+
+    # Return the list of enhanced objects, converted to dictionaries for compatibility
+    return [s.model_dump() for s in live_streams_info]
+
+
+def _batch_check_liveness(all_configured_streams_data: List[Dict[str, str]]) -> List[str]:
+    """
+    Optimized batch liveness checking with proper error handling.
+    
+    Args:
+        all_configured_streams_data: List of configured stream dictionaries
+        
+    Returns:
+        List of URLs that are live
+    """
+    all_configured_urls = [s["url"] for s in all_configured_streams_data]
+    live_stream_candidates = []
+    max_workers = min(config.get_max_workers_liveness(), len(all_configured_urls))
+    
+    with ThreadPoolExecutor(max_workers=max_workers) as executor:
+        # Submit all tasks
         future_to_url = {
-            executor.submit(get_stream_metadata_json, url): url
-            for url in live_stream_candidates
+            executor.submit(is_stream_live_for_check_detailed, url): url
+            for url in all_configured_urls
         }
         
+        # Process results as they complete
         for future in as_completed(future_to_url):
             url = future_to_url[future]
-            success, json_data = future.result()
-            
-            if url in url_to_details_map:
-                stream_data = url_to_details_map[url]
+            try:
+                result = future.result(timeout=config.get_streamlink_timeout_liveness() + 5)
+                if result.is_live:
+                    live_stream_candidates.append(url)
+                elif result.error:
+                    logger.debug(f"Stream check failed for {url}: {result.error}")
+            except Exception as e:
+                logger.warning(f"Unexpected error checking {url}: {e}")
                 
-                # Extract category/title from metadata
-                category = "N/A"
-                viewer_count = None
-                title = None
-                
-                if success and json_data:
-                    try:
-                        import json
-                        metadata_json = json.loads(json_data)
-                        if "metadata" in metadata_json:
-                            meta = metadata_json["metadata"]
-                            title = meta.get("title")
-                            
-                            # Extract viewer count
-                            for key in ["viewers", "viewer_count", "online"]:
-                                if key in meta and meta[key] is not None:
-                                    try:
-                                        viewer_count = int(meta[key])
-                                        if viewer_count >= 0:
-                                            break
-                                    except (ValueError, TypeError):
-                                        continue
-                            
-                            # Extract category using existing logic
-                            platform = stream_data.get("platform", "Unknown")
-                            raw_category = extract_category_keywords((success, json_data), platform)
-                            
-                            # Sanitize category to ensure it passes validation
-                            category = sanitize_category_string(raw_category)
-                    except (json.JSONDecodeError, KeyError) as e:
-                        logger.debug(f"Could not parse metadata for {url}: {e}")
-                
-                live_streams_info.append(
-                    StreamInfo(
+    return live_stream_candidates
+
+
+def _batch_fetch_metadata(live_urls: List[str], all_configured_streams_data: List[Dict[str, str]]) -> List[StreamInfo]:
+    """
+    Optimized batch metadata fetching with proper error handling.
+    
+    Args:
+        live_urls: List of URLs that are live
+        all_configured_streams_data: Original stream configuration data
+        
+    Returns:
+        List of StreamInfo objects with metadata
+    """
+    url_to_details_map = {s["url"]: s for s in all_configured_streams_data}
+    live_streams_info = []
+    max_workers = min(config.get_max_workers_metadata(), len(live_urls))
+    
+    logger.info("Fetching stream metadata...")
+    
+    with ThreadPoolExecutor(max_workers=max_workers) as executor:
+        # Submit metadata fetch tasks
+        future_to_url = {
+            executor.submit(get_stream_metadata_json_detailed, url): url
+            for url in live_urls
+        }
+        
+        # Process results as they complete
+        for future in as_completed(future_to_url):
+            url = future_to_url[future]
+            try:
+                result = future.result(timeout=config.get_streamlink_timeout_metadata() + 5)
+                stream_info = _create_stream_info_from_result(url, result, url_to_details_map)
+                if stream_info:
+                    live_streams_info.append(stream_info)
+            except Exception as e:
+                logger.warning(f"Unexpected error fetching metadata for {url}: {e}")
+                # Create basic stream info without metadata
+                if url in url_to_details_map:
+                    stream_data = url_to_details_map[url]
+                    basic_info = StreamInfo(
                         url=url,
                         alias=stream_data.get("alias", "Unnamed"),
                         platform=stream_data.get("platform", "Unknown"),
                         username=stream_data.get("username", "unknown"),
-                        category=category,
-                        title=title,
-                        viewer_count=viewer_count,
+                        category="N/A",
                         status=StreamStatus.LIVE,
                     )
-                )
+                    live_streams_info.append(basic_info)
+                    
+    return live_streams_info
 
-    # Return the list of enhanced objects, converted to dictionaries for compatibility
-    return [s.model_dump() for s in live_streams_info]
+
+def _create_stream_info_from_result(url: str, result: "MetadataResult", url_to_details_map: Dict[str, Dict[str, str]]) -> Optional[StreamInfo]:
+    """
+    Create StreamInfo object from metadata result.
+    
+    Args:
+        url: Stream URL
+        result: Metadata fetch result
+        url_to_details_map: Mapping of URLs to stream configuration
+        
+    Returns:
+        StreamInfo object or None if creation fails
+    """
+    if url not in url_to_details_map:
+        return None
+        
+    stream_data = url_to_details_map[url]
+    
+    # Default values
+    category = "N/A"
+    viewer_count = None
+    title = None
+    
+    # Extract metadata if successful
+    if result.success and result.json_data:
+        try:
+            import json
+            metadata_json = json.loads(result.json_data)
+            if "metadata" in metadata_json:
+                meta = metadata_json["metadata"]
+                title = meta.get("title")
+                
+                # Extract viewer count
+                for key in ["viewers", "viewer_count", "online"]:
+                    if key in meta and meta[key] is not None:
+                        try:
+                            viewer_count = int(meta[key])
+                            if viewer_count >= 0:
+                                break
+                        except (ValueError, TypeError):
+                            continue
+                
+                # Extract and sanitize category
+                platform = stream_data.get("platform", "Unknown")
+                raw_category = extract_category_keywords((True, result.json_data), platform)
+                category = sanitize_category_string(raw_category)
+                
+        except (json.JSONDecodeError, KeyError) as e:
+            logger.debug(f"Could not parse metadata for {url}: {e}")
+    
+    return StreamInfo(
+        url=url,
+        alias=stream_data.get("alias", "Unnamed"),
+        platform=stream_data.get("platform", "Unknown"),
+        username=stream_data.get("username", "unknown"),
+        category=category,
+        title=title,
+        viewer_count=viewer_count,
+        status=StreamStatus.LIVE,
+    )
 
 
 # --- Cache Management Functions ---
@@ -944,3 +1361,93 @@ def get_rate_limit_status_message() -> str:
     except Exception as e:
         logger.debug(f"Error getting rate limit status message: {e}")
         return ""
+
+
+# --- Result-based API for improved error handling ---
+
+
+def check_stream_liveness_safe(url: str) -> StreamResult:
+    """
+    Check stream liveness using Result pattern for consistent error handling.
+    
+    Args:
+        url: Stream URL to check
+        
+    Returns:
+        Result containing StreamCheckResult or error message
+    """
+    # Validate URL first
+    if not url or not isinstance(url, str):
+        return Result.Err("Invalid URL provided")
+    
+    # Check cache first if enabled
+    if config.get_cache_enabled():
+        cache = get_cache()
+        cached_status = cache.get(url)
+        if cached_status is not None:
+            logger.debug(f"Using cached status for {url}: {cached_status.value}")
+            result = StreamCheckResult(
+                is_live=(cached_status == StreamStatus.LIVE),
+                url=url
+            )
+            return Result.Ok(result)
+    
+    # Apply rate limiting
+    if config.get_rate_limit_enabled():
+        rate_limiter = get_rate_limiter()
+        timeout = config.get_streamlink_timeout_liveness()
+        
+        if not rate_limiter.acquire(url, timeout=timeout):
+            return Result.Err(f"Rate limit exceeded for {url}")
+    
+    # Perform the actual check
+    check_result = safe_call(_is_stream_live_core, url)
+    
+    if check_result.is_err():
+        return Result.Err(f"Stream check failed: {check_result.unwrap_err()}")
+    
+    result = check_result.unwrap()
+    
+    # Update cache if enabled
+    if config.get_cache_enabled():
+        cache = get_cache()
+        status = StreamStatus.LIVE if result.is_live else StreamStatus.OFFLINE
+        if result.error and isinstance(result.error, StreamNotFoundError):
+            status = StreamStatus.OFFLINE
+        elif result.error:
+            status = StreamStatus.ERROR
+            
+        cache.put(url, status)
+        logger.debug(f"Cached status for {url}: {status.value}")
+    
+    return Result.Ok(result)
+
+
+def fetch_stream_metadata_safe(url: str) -> StreamResult:
+    """
+    Fetch stream metadata using Result pattern for consistent error handling.
+    
+    Args:
+        url: Stream URL to fetch metadata for
+        
+    Returns:
+        Result containing MetadataResult or error message
+    """
+    if not url or not isinstance(url, str):
+        return Result.Err("Invalid URL provided")
+    
+    # Apply rate limiting
+    if config.get_rate_limit_enabled():
+        rate_limiter = get_rate_limiter()
+        timeout = config.get_streamlink_timeout_metadata()
+        
+        if not rate_limiter.acquire(url, timeout=timeout):
+            return Result.Err(f"Rate limit exceeded for {url}")
+    
+    # Perform the metadata fetch
+    metadata_result = safe_call(_get_stream_metadata_core, url)
+    
+    if metadata_result.is_err():
+        return Result.Err(f"Metadata fetch failed: {metadata_result.unwrap_err()}")
+    
+    return Result.Ok(metadata_result.unwrap())

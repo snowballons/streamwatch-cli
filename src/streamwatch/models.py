@@ -14,8 +14,9 @@ from urllib.parse import urlparse
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
-# Import validators - use try/except to handle circular imports
+# Import validation utilities
 try:
+    from .validation_utils import CommonValidators, validators_available_check
     from .validators import (
         SecurityError,
         ValidationError,
@@ -26,7 +27,6 @@ try:
         validate_username,
         validate_viewer_count,
     )
-
     VALIDATORS_AVAILABLE = True
 except ImportError:
     VALIDATORS_AVAILABLE = False
@@ -146,16 +146,11 @@ class StreamInfo(BaseModel):
     def validate_url_field(cls, v: str) -> str:
         """Validate URL format with comprehensive security checks."""
         if VALIDATORS_AVAILABLE:
-            try:
-                is_valid, sanitized_url, metadata = validate_url(v, strict=False)
-                return sanitized_url
-            except (ValidationError, SecurityError) as e:
-                raise ValueError(str(e))
+            return CommonValidators.url_validator(v)
         else:
             # Fallback validation if validators not available
             if not v or not v.strip():
                 raise ValueError("URL cannot be empty")
-
             url = v.strip()
             try:
                 parsed = urlparse(url)
@@ -163,7 +158,6 @@ class StreamInfo(BaseModel):
                     raise ValueError("Invalid URL format")
             except Exception as e:
                 raise ValueError(f"Invalid URL: {e}")
-
             return url
 
     @field_validator("alias")
@@ -171,12 +165,8 @@ class StreamInfo(BaseModel):
     def validate_alias_field(cls, v: str) -> str:
         """Validate alias format with security checks."""
         if VALIDATORS_AVAILABLE:
-            try:
-                return validate_alias(v)
-            except (ValidationError, SecurityError) as e:
-                raise ValueError(str(e))
+            return CommonValidators.alias_validator(v)
         else:
-            # Fallback validation
             if not v or not v.strip():
                 raise ValueError("Alias cannot be empty")
             return v.strip()
@@ -186,12 +176,8 @@ class StreamInfo(BaseModel):
     def validate_username_field(cls, v: str) -> str:
         """Validate username format with security checks."""
         if VALIDATORS_AVAILABLE:
-            try:
-                return validate_username(v)
-            except (ValidationError, SecurityError) as e:
-                raise ValueError(str(e))
+            return CommonValidators.username_validator(v)
         else:
-            # Fallback validation
             return v.strip() if v else "unknown_stream"
 
     @field_validator("category")
@@ -199,12 +185,8 @@ class StreamInfo(BaseModel):
     def validate_category_field(cls, v: str) -> str:
         """Validate category format with security checks."""
         if VALIDATORS_AVAILABLE:
-            try:
-                return validate_category(v)
-            except (ValidationError, SecurityError) as e:
-                raise ValueError(str(e))
+            return CommonValidators.category_validator(v)
         else:
-            # Fallback validation
             return v.strip() if v else "N/A"
 
     @field_validator("viewer_count")
@@ -212,12 +194,8 @@ class StreamInfo(BaseModel):
     def validate_viewer_count_field(cls, v: Optional[int]) -> Optional[int]:
         """Validate viewer count."""
         if VALIDATORS_AVAILABLE:
-            try:
-                return validate_viewer_count(v)
-            except (ValidationError, SecurityError) as e:
-                raise ValueError(str(e))
+            return CommonValidators.viewer_count_validator(v)
         else:
-            # Fallback validation
             if v is not None and v < 0:
                 raise ValueError("Viewer count cannot be negative")
             return v
@@ -320,9 +298,7 @@ class PlaybackSession(BaseModel):
     @classmethod
     def validate_quality(cls, v: str) -> str:
         """Validate quality string."""
-        if not v or not v.strip():
-            raise ValueError("Quality cannot be empty")
-        return v.strip()
+        return CommonValidators.quality_validator(v)
 
     @field_validator("all_live_streams")
     @classmethod
