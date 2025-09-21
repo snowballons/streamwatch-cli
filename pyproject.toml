@@ -96,4 +96,5 @@ gui = [
 ]
 
 [tool.mypy]
-python_package_dir = "src"
+mypy_path = "src"
+python_version = "3.8"
