@@ -19,6 +19,14 @@ from .playback_commands import (
     PlayStreamCommand,
 )
 
+# Import recording-related commands
+from .recording_commands import (
+    ListRecordingsCommand,
+    StartRecordingCommand,
+    StopAllRecordingsCommand,
+    StopRecordingCommand,
+)
+
 # Import stream-related commands
 from .stream_commands import (
     AddStreamCommand,
@@ -35,6 +43,11 @@ __all__ = [
     "CommandResult",
     # Command invoker
     "CommandInvoker",
+    # Recording commands
+    "StartRecordingCommand",
+    "StopRecordingCommand",
+    "ListRecordingsCommand",
+    "StopAllRecordingsCommand",
     # Stream commands
     "AddStreamCommand",
     "RemoveStreamCommand",

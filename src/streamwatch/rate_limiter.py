@@ -26,7 +26,7 @@ class RateLimit:
     requests_per_second: float
     burst_capacity: int
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         """Validate rate limit configuration."""
         if self.requests_per_second <= 0:
             raise ValueError("requests_per_second must be positive")
@@ -150,7 +150,7 @@ class RateLimiter:
     Multi-platform rate limiter with global and per-platform limits.
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize the rate limiter with configured limits."""
         self.platform_buckets: Dict[str, TokenBucket] = {}
         self.global_bucket: Optional[TokenBucket] = None

@@ -32,7 +32,7 @@ USERNAME_ALLOWED_CHARS = re.compile(r"^[a-zA-Z0-9\-_\.]+$")
 CATEGORY_ALLOWED_CHARS = re.compile(r"^[a-zA-Z0-9\s\-_\.\(\)\[\]&/]+$")
 
 # Known streaming platforms and their URL patterns
-SUPPORTED_PLATFORMS = {
+SUPPORTED_PLATFORMS: Dict[str, Dict[str, Any]] = {
     "twitch": {
         "domains": ["twitch.tv", "www.twitch.tv", "m.twitch.tv"],
         "patterns": [
@@ -82,7 +82,7 @@ DANGEROUS_PATTERNS = [
 class ValidationError(Exception):
     """Exception raised when validation fails."""
 
-    def __init__(self, message: str, field: str = None, value: Any = None):
+    def __init__(self, message: str, field: Optional[str] = None, value: Any = None):
         super().__init__(message)
         self.field = field
         self.value = value
@@ -190,11 +190,20 @@ def validate_url(url: str, strict: bool = True) -> Tuple[bool, str, Dict[str, An
             for pattern in platform_info["patterns"]:
                 match = re.match(pattern, sanitized_url, re.IGNORECASE)
                 if match:
-                    metadata["platform"] = platform_name.title()
+                    # Use proper platform names
+                    platform_names = {
+                        "youtube": "YouTube",
+                        "twitch": "Twitch",
+                        "kick": "Kick",
+                    }
+                    metadata["platform"] = platform_names.get(
+                        platform_name, platform_name.title()
+                    )
 
                     # Extract username if pattern has a group
-                    if len(match.groups()) >= platform_info["username_group"]:
-                        username = match.group(platform_info["username_group"])
+                    username_group = platform_info["username_group"]
+                    if len(match.groups()) >= username_group:
+                        username = match.group(username_group)
                         # Clean username (remove @ prefix for YouTube)
                         if username.startswith("@"):
                             username = username[1:]
@@ -283,8 +292,8 @@ def validate_username(username: str) -> str:
     if not isinstance(username, str):
         raise ValidationError("Username must be a string", "username", username)
 
-    # Strip whitespace
-    username = username.strip()
+    # Strip whitespace and @ symbols
+    username = username.strip().lstrip("@")
 
     # Check length
     if not username:
@@ -610,7 +619,7 @@ def validate_and_sanitize_stream_data(data: Dict[str, Any]) -> Dict[str, Any]:
     Returns:
         Dictionary with validated and sanitized data
     """
-    sanitized = {}
+    sanitized: Dict[str, Any] = {}
 
     # Required fields
     if "url" not in data:

@@ -76,6 +76,10 @@ def display_main_menu(live_streams_count: int) -> None:
     text.append("  [", style="dimmed").append("E", style="menu_key").append(
         "]      - Export streams to a .json backup\n", style="menu_option"
     )
+    text.append("  [", style="dimmed").append("V", style="menu_key").append(
+        "]      - Recording controls\n", style="menu_option"
+    )
+
     # --- END NEW ---
 
     (

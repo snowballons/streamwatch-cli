@@ -65,7 +65,7 @@ class StreamNotFoundError(StreamlinkError):
     - Stream URL is invalid or doesn't exist
     """
 
-    def __init__(self, message: str = "Stream not found or offline", **kwargs):
+    def __init__(self, message: str = "Stream not found or offline", **kwargs: Any):
         super().__init__(message, **kwargs)
 
 
@@ -80,7 +80,7 @@ class NetworkError(StreamlinkError):
     - HTTP/HTTPS connection errors
     """
 
-    def __init__(self, message: str = "Network connectivity issue", **kwargs):
+    def __init__(self, message: str = "Network connectivity issue", **kwargs: Any):
         super().__init__(message, **kwargs)
 
 
@@ -95,7 +95,7 @@ class AuthenticationError(StreamlinkError):
     - Geographic restrictions
     """
 
-    def __init__(self, message: str = "Authentication failed", **kwargs):
+    def __init__(self, message: str = "Authentication failed", **kwargs: Any):
         super().__init__(message, **kwargs)
 
 
@@ -109,7 +109,7 @@ class TimeoutError(StreamlinkError):
     - Metadata fetching times out
     """
 
-    def __init__(self, message: str = "Operation timed out", **kwargs):
+    def __init__(self, message: str = "Operation timed out", **kwargs: Any):
         super().__init__(message, **kwargs)
 
 

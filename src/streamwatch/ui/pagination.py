@@ -117,7 +117,7 @@ class StreamListManager:
     and pagination capabilities.
     """
 
-    def __init__(self, page_size: int = None):
+    def __init__(self, page_size: Optional[int] = None):
         """
         Initialize the stream list manager.
 
@@ -133,7 +133,7 @@ class StreamListManager:
         logger.debug(f"StreamListManager initialized with page_size={self.page_size}")
 
     def get_page(
-        self, streams: List[StreamInfo], page: int = None
+        self, streams: List[StreamInfo], page: Optional[int] = None
     ) -> Tuple[List[StreamInfo], PaginationInfo]:
         """
         Get a specific page of streams with applied filters.
@@ -368,7 +368,7 @@ class LazyStreamLoader:
     to keep frequently accessed streams in memory.
     """
 
-    def __init__(self, cache_size: int = None):
+    def __init__(self, cache_size: Optional[int] = None):
         """
         Initialize the lazy loader and dynamically create the cached function.
         """

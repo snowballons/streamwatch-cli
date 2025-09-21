@@ -7,7 +7,7 @@ improved testability.
 """
 
 import logging
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 from . import config, stream_checker, ui
 from .container import DIContainer, ServiceRegistry
@@ -23,7 +23,7 @@ class StreamWatchApp:
     managing the application lifecycle and coordinating between different services.
     """
 
-    def __init__(self, container: DIContainer = None):
+    def __init__(self, container: Optional[DIContainer] = None):
         """
         Initialize the StreamWatch application.
 

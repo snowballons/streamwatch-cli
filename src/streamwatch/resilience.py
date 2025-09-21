@@ -209,7 +209,7 @@ class CircuitBreaker:
             and time.time() >= self.state.next_attempt_time
         )
 
-    def _record_success(self):
+    def _record_success(self) -> None:
         """Record a successful operation."""
         if self.state.state == CircuitState.HALF_OPEN:
             self.state.success_count += 1
@@ -224,7 +224,7 @@ class CircuitBreaker:
             # Reset failure count on success
             self.state.failure_count = 0
 
-    def _record_failure(self, exception: Exception):
+    def _record_failure(self, exception: Exception) -> None:
         """Record a failed operation."""
         self.state.failure_count += 1
         self.state.last_failure_time = time.time()

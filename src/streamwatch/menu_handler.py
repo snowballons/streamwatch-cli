@@ -2,7 +2,7 @@
 
 import logging
 import sys
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 from . import config, ui
 from .commands import (
@@ -34,7 +34,7 @@ logger = logging.getLogger(config.APP_NAME + ".menu_handler")
 class MenuHandler:
     """Handles menu display and user input processing for the StreamWatch application."""
 
-    def __init__(self, command_invoker: CommandInvoker = None):
+    def __init__(self, command_invoker: Optional[CommandInvoker] = None):
         """
         Initialize the MenuHandler.
 
@@ -163,6 +163,12 @@ class MenuHandler:
             export_command = ExportStreamsCommand(stream_manager)
             result = self.command_invoker.execute_command(export_command)
             self.last_message = result.message
+
+        elif choice == "v":  # RECORDING CONTROLS
+            from .recording_menu import RecordingMenuHandler
+
+            recording_menu = RecordingMenuHandler(ui.console)
+            recording_menu.show_recording_menu(live_streams)
 
         elif choice == "f":
             # Create and execute RefreshStreamsCommand

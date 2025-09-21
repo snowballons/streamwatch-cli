@@ -7,7 +7,7 @@ and maintainability.
 """
 
 import logging
-from typing import Any, Callable, Dict, Optional, Type, TypeVar
+from typing import Any, Callable, Dict, TypeVar
 
 from . import config
 
@@ -27,7 +27,7 @@ class DIContainer:
     - Dependency resolution
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize the DI container."""
         self._services: Dict[str, Any] = {}
         self._factories: Dict[str, Callable[[], Any]] = {}

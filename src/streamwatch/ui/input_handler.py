@@ -66,11 +66,13 @@ def prompt_for_filepath(
         # Try validation if available, but don't fail if validator has issues
         try:
             from ..validators import ValidationError, validate_file_path
+
             validated_path = validate_file_path(raw_path)
             return str(validated_path)
         except ImportError:
             # Fallback: basic path validation without validators module
             from pathlib import Path
+
             try:
                 path = Path(raw_path).expanduser()
                 return str(path)
@@ -82,11 +84,12 @@ def prompt_for_filepath(
             logger.warning(f"Path validation warning: {e}")
             try:
                 from pathlib import Path
+
                 path = Path(raw_path).expanduser()
                 return str(path)
             except Exception:
                 return raw_path  # Return raw path if all validation fails
-                
+
     except (EOFError, KeyboardInterrupt):
         console.print("\nOperation cancelled.", style="warning")
         return None
@@ -255,6 +258,8 @@ def prompt_main_menu_action() -> str:
                     "export",
                     "i",
                     "import",
+                    "v",
+                    "recording",
                     "c",
                     "check",
                     "s",

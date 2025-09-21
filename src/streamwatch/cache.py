@@ -7,9 +7,9 @@ redundant streamlink calls for recently checked streams.
 
 import logging
 import time
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from threading import Lock
-from typing import Dict, Optional, Set, Tuple
+from typing import Dict, Optional
 
 from . import config
 from .models import StreamStatus

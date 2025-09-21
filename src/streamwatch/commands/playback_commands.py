@@ -113,7 +113,7 @@ class PlayStreamCommand(Command):
                 )
             elif playback_action == "return_to_main":
                 return CommandResult(
-                    success=True, message="Returned to main menu", needs_refresh=True
+                    success=True, message="Returned to main menu", needs_refresh=False
                 )
             elif playback_action == "stop_playback":
                 return CommandResult(

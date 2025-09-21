@@ -99,10 +99,10 @@ window.addEventListener('DOMContentLoaded', function() {
     document.querySelectorAll('.copy-button').forEach(btn => {
         btn.addEventListener('click', function(event) {
             event.preventDefault();
-            
+
             // Try to find the code content in various ways
             let textToCopy = '';
-            
+
             // Method 1: Look for previous sibling with code element
             const prevElement = this.previousElementSibling;
             if (prevElement && prevElement.tagName === 'PRE') {
@@ -111,7 +111,7 @@ window.addEventListener('DOMContentLoaded', function() {
                     textToCopy = codeElement.textContent.trim();
                 }
             }
-            
+
             // Method 2: Look within the same parent for code element
             if (!textToCopy) {
                 const parentCodeBlock = this.closest('.code-block');
@@ -122,7 +122,7 @@ window.addEventListener('DOMContentLoaded', function() {
                     }
                 }
             }
-            
+
             // Method 3: Look in command-header for code element
             if (!textToCopy) {
                 const commandHeader = this.closest('.command-header');
@@ -133,12 +133,12 @@ window.addEventListener('DOMContentLoaded', function() {
                     }
                 }
             }
-            
+
             // Method 4: Check if there's a data attribute for the text
             if (!textToCopy && this.dataset.copyText) {
                 textToCopy = this.dataset.copyText;
             }
-            
+
             if (textToCopy) {
                 copyToClipboard(textToCopy, this);
             } else {
@@ -146,14 +146,14 @@ window.addEventListener('DOMContentLoaded', function() {
             }
         });
     });
-    
+
     // Enhanced FAQ functionality
     document.querySelectorAll('.faq-item summary').forEach(summary => {
         summary.addEventListener('click', function(event) {
             // Close other open FAQ items for accordion behavior
             const currentDetails = this.parentElement;
             const allDetails = document.querySelectorAll('.faq-item');
-            
+
             allDetails.forEach(details => {
                 if (details !== currentDetails && details.open) {
                     details.open = false;

@@ -68,6 +68,17 @@ DEFAULT_CONFIG: Dict[str, Dict[str, str]] = {
         "metadata_cache_size": "100",
         "lazy_load_threshold": "50",
     },
+    "Recording": {
+        "enabled": "true",  # Enable recording feature
+        "output_directory": "",  # Default to ~/Videos/StreamWatch
+        "filename_template": "{platform}_{username}_{date}_{time}.{ext}",
+        "default_format": "mp4",  # Default container format
+        "quality": "best",  # Recording quality (can differ from playback)
+        "max_file_size": "0",  # Max file size in MB (0 = unlimited)
+        "max_duration": "0",  # Max duration in minutes (0 = unlimited)
+        "auto_split": "false",  # Auto-split large files
+        "split_size": "1000",  # Split size in MB
+    },
     "Misc": {
         "donation_link": "https://buymeacoffee.com/snowballons",  # Your actual link
         "first_run_completed": "false",  # For First-Time UX

@@ -7,7 +7,7 @@ including input sanitization, XSS protection, and safe display formatting.
 
 import logging
 import re
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 from . import config
 from .validators import (
@@ -258,7 +258,7 @@ def create_safe_prompt_choices(
 
 
 def log_user_action(
-    action: str, details: Dict[str, Any] = None, user_id: str = "unknown"
+    action: str, details: Optional[Dict[str, Any]] = None, user_id: str = "unknown"
 ) -> None:
     """
     Safely log user actions for security monitoring.

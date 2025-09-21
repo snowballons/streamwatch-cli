@@ -22,13 +22,12 @@ def test_app_run_handles_keyboard_interrupt(mock_loop):
         pytest.fail("The app.run() method did not catch the KeyboardInterrupt.")
 
 
-@patch("src.streamwatch.app.DIContainer")
-def test_app_initialization(mock_container):
+def test_app_initialization():
     """Verify that the StreamWatchApp initializes its components correctly."""
     app = StreamWatchApp()
 
-    # Verify that the container was instructed to get the core components
-    container_instance = app.get_container()
-    container_instance.get.assert_any_call("menu_handler")
-    container_instance.get.assert_any_call("stream_manager")
-    container_instance.get.assert_any_call("playback_controller")
+    # Verify that the app has the required components
+    assert app.menu_handler is not None
+    assert app.stream_manager is not None
+    assert app.playback_controller is not None
+    assert app.container is not None

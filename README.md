@@ -64,6 +64,7 @@
 - **Stream Aliases:** Assign custom nicknames to your streams for a personalized list.
 - **Stream Management:** Add, remove, list, import, and export your stream list with ease.
 - **File-Based Management:** Use a `streams.d` directory to manage your streams with simple text files.
+- **Background Recording:** Record live streams to a file while you continue to browse or watch other streams.
 - **Automatic Reconnection:** Automatically attempts to reconnect if a stream drops.
 - **Playback Hooks:** Trigger custom scripts before and after a stream plays.
 - **Persistent Configuration:** User-editable `config.ini` for settings and `streams.json` for your interactive list.
@@ -202,6 +203,7 @@ streamwatch
 | `R`      | Remove streams from your list.               |
 | `I`      | Import streams from a `.txt` file.           |
 | `E`      | Export your stream list to a `.json` file.   |
+    | `V`      | Open Recording Controls menu.                |
 | `P`      | Play the last stream you watched.            |
 | `F`      | Force a refresh of the live stream list.     |
 | `Q`      | Quit StreamWatch.                            |

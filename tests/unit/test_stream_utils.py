@@ -11,5 +11,5 @@ class TestUrlParsing:
 
     def test_parse_youtube_url(self):
         result = parse_url_metadata("https://www.youtube.com/@testchannel")
-        assert result["platform"] == "Youtube"
+        assert result["platform"] == "YouTube"
         assert result["username"] == "testchannel"

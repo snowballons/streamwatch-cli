@@ -191,7 +191,7 @@ class StreamDatabase:
         return self._local.connection
 
     @contextmanager
-    def transaction(self):
+    def transaction(self) -> sqlite3.Connection:
         """Context manager for database transactions."""
         conn = self.connection
         try:

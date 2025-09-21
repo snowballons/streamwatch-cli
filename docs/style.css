@@ -413,15 +413,15 @@ footer a:hover {
         margin-left: 0;
         margin-top: 0.5rem;
     }
-    
+
     .content-section {
         padding: 3rem 3%;
     }
-    
+
     .content-section h2 {
         font-size: 2rem;
     }
-    
+
     /* Make grids single column on mobile */
     .platforms-grid,
     .architecture-grid,
@@ -432,23 +432,23 @@ footer a:hover {
     .contributing-ways {
         grid-template-columns: 1fr;
     }
-    
+
     /* Stack code blocks vertically */
     .code-block {
         flex-direction: column;
         align-items: stretch;
     }
-    
+
     .code-block .copy-button {
         margin-top: 0.5rem;
         width: 100%;
     }
-    
+
     /* Make table responsive */
     .comparison-table {
         font-size: 0.9rem;
     }
-    
+
     .comparison-table th,
     .comparison-table td {
         padding: 0.5rem;

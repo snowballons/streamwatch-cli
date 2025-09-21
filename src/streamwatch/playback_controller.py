@@ -13,7 +13,7 @@ logger = logging.getLogger(config.APP_NAME + ".playback_controller")
 class PlaybackController:
     """Handles playback session management for the StreamWatch application."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize the PlaybackController."""
         pass
 
@@ -82,15 +82,13 @@ class PlaybackController:
                         f"Failed to launch player for {current_stream_info['url']}."
                     )
 
-                    # If this was the very first stream the user tried to play, and it failed, then exit.
+                    # If this was the very first stream the user tried to play, and it failed, try next stream
                     if user_intent_direction == 0:
-                        ui.show_message(
-                            "Failed to start player for the selected stream. Returning to main menu.",
-                            style="error",
-                            duration=2,
-                            pause_after=True,
+                        ui.console.print(
+                            f"Failed to start [info]{current_stream_info['username']}[/info]. Trying next stream...",
+                            style="warning",
                         )
-                        return "return_to_main"
+                        user_intent_direction = 1  # Set direction to next
 
                     # Otherwise, we were trying to auto-skip, so continue that process.
                     ui.console.print(
@@ -251,6 +249,7 @@ class PlaybackController:
             result[
                 "new_player_process"
             ] = None  # This signals the main loop to re-launch
+            result["user_intent_direction"] = 0  # Reset to treat as fresh attempt
 
         elif action == "m" or action == "main_menu":
             logger.info("User returned to main menu from playback.")

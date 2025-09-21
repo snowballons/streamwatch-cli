@@ -6,10 +6,9 @@ removing, listing, importing, and exporting streams.
 """
 
 import logging
-from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Optional
 
-from .. import config, ui
+from .. import config
 from .base import Command, CommandResult
 
 logger = logging.getLogger(config.APP_NAME + ".commands.stream_commands")
